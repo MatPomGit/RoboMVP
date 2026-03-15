@@ -13,7 +13,7 @@ table_markers:
 target_marker: 30
 
 # Oczekiwane pozycje markerów względem robota (metry)
-# Format: [x, y, z]
+# Format: {x: float, y: float, z: float}
 expected_marker_positions:
   box:
     x: 0.0

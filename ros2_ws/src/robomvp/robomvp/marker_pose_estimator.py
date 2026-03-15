@@ -176,7 +176,11 @@ class MarkerPoseEstimatorNode(Node):
         return offset
 
     def _rvec_to_quaternion(self, rvec: np.ndarray):
-        """Konwertuje wektor obrotu Rodriguesa na kwaternion."""
+        """Konwertuje wektor obrotu Rodriguesa na kwaternion.
+
+        TODO: Użyć tej metody gdy _estimate_pose zostanie rozszerzone
+        o pełną estymację pozy przez cv2.solvePnP z narożnikami markera.
+        """
         angle = float(np.linalg.norm(rvec))
         if angle < 1e-10:
             return 0.0, 0.0, 0.0, 1.0

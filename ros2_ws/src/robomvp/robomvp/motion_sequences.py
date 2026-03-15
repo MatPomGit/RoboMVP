@@ -56,7 +56,7 @@ def get_walk_to_second_table() -> list:
     """
     import math
     return [
-        {'x': 0.0, 'y': 0.8, 'z': 0.0, 'yaw': math.pi},   # po obroci
+        {'x': 0.0, 'y': 0.8, 'z': 0.0, 'yaw': math.pi},   # po obrocie
         {'x': 0.0, 'y': 1.5, 'z': 0.0, 'yaw': math.pi},   # ruch naprzód
         {'x': 0.0, 'y': 2.5, 'z': 0.0, 'yaw': math.pi},   # dalej
         {'x': 0.0, 'y': 3.2, 'z': 0.0, 'yaw': math.pi},   # przed drugim stołem

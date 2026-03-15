@@ -93,7 +93,7 @@ class RoboMVPMain(Node):
     def _load_config(self, config_path: str) -> dict:
         """Wczytuje konfigurację sceny z pliku YAML."""
         if not config_path:
-            # Szukaj pliku konfiguracji relative do pakietu
+            # Szukaj pliku konfiguracji względem pakietu
             possible_paths = [
                 os.path.join(
                     os.path.dirname(os.path.abspath(__file__)),
