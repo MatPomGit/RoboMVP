@@ -13,7 +13,6 @@ import rclpy
 import yaml
 from rclpy.node import Node
 
-from robomvp.logger_utils import stamp
 from robomvp.msg import MarkerDetection, MarkerPose, Offset
 
 
@@ -50,10 +49,10 @@ class MarkerPoseEstimatorNode(Node):
         self._pub_pose = self.create_publisher(MarkerPose, '/robomvp/marker_pose', 10)
         self._pub_offset = self.create_publisher(Offset, '/robomvp/offset', 10)
 
-        self.get_logger().info(stamp(
+        self.get_logger().info(
             'Węzeł estymacji pozy markerów uruchomiony. '
             'Oczekiwanie na wykrycia markerów.'
-        ))
+        )
 
     def _load_camera_params(self, config_path: str):
         """Wczytuje macierz kamery i współczynniki dystorsji z pliku YAML."""
@@ -65,10 +64,10 @@ class MarkerPoseEstimatorNode(Node):
         default_dist = np.zeros((5, 1), dtype=np.float64)
 
         if not config_path:
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 'Brak ścieżki do konfiguracji kamery – używam domyślnych parametrów. '
                 'Podaj ścieżkę przez parametr: --ros-args -p camera_config_path:=<ścieżka>'
-            ))
+            )
             return default_matrix, default_dist
 
         try:
@@ -93,11 +92,11 @@ class MarkerPoseEstimatorNode(Node):
                 self._marker_size = float(cfg['marker_size'])
             return matrix, dist
         except Exception as e:
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 f'Błąd wczytywania konfiguracji kamery: {e}. '
                 'Sprawdź format pliku camera.yaml i wartości parametrów. '
                 'Używam domyślnych parametrów kalibracji.'
-            ))
+            )
             return default_matrix, default_dist
 
     def _on_detection(self, msg: MarkerDetection):
@@ -109,16 +108,16 @@ class MarkerPoseEstimatorNode(Node):
             offset = self._compute_offset(pose)
             self._pub_offset.publish(offset)
 
-            self.get_logger().debug(stamp(
+            self.get_logger().debug(
                 f'Marker {msg.marker_id}: '
                 f'pos=({pose.x:.3f}, {pose.y:.3f}, {pose.z:.3f}) m, '
                 f'offset=({offset.dx:.3f}, {offset.dy:.3f}, {offset.dz:.3f}) m'
-            ))
+            )
         except Exception as e:
-            self.get_logger().error(stamp(
+            self.get_logger().error(
                 f'Błąd estymacji pozy markera {msg.marker_id}: {e}. '
                 'Sprawdź parametry kalibracji kamery i format wiadomości wykrycia.'
-            ))
+            )
 
     def _estimate_pose(self, msg: MarkerDetection) -> MarkerPose:
         """Oblicza przybliżoną pozycję 3D markera na podstawie jego rozmiaru w obrazie.

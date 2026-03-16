@@ -17,9 +17,6 @@ from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 
-from robomvp.logger_utils import stamp
-
-
 class CameraInterface(Node):
     """Węzeł ROS2 publikujący obrazy z obu kamer robota."""
 
@@ -54,16 +51,16 @@ class CameraInterface(Node):
 
         if self._mode == 'demo_mode':
             self._load_demo_images()
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 f'Tryb demo: załadowano {len(self._demo_images)} obrazów testowych. '
                 'Obrazy będą publikowane cyklicznie na tematy kamer.'
-            ))
+            )
         else:
             self._init_robot_cameras()
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Tryb robot: inicjalizacja kamer sprzętowych. '
                 'Upewnij się, że robot jest podłączony i SDK jest dostępne.'
-            ))
+            )
 
     def _load_demo_images(self):
         """Wczytuje obrazy testowe z katalogu data/test_images/."""
@@ -83,24 +80,24 @@ class CameraInterface(Node):
                     if img is not None:
                         self._demo_images.append(img)
                     else:
-                        self.get_logger().warn(stamp(
+                        self.get_logger().warn(
                             f'Nie można wczytać obrazu: {img_path}. '
                             'Sprawdź, czy plik nie jest uszkodzony.'
-                        ))
+                        )
         else:
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 f'Katalog obrazów testowych nie istnieje: {path}. '
                 'Ustaw poprawną ścieżkę przez parametr test_images_path '
                 'lub utwórz katalog data/test_images/ z obrazami PNG/JPG.'
-            ))
+            )
         if not self._demo_images:
             # Jeśli brak obrazów, utwórz czarny obraz zastępczy
             blank = self._create_blank_image()
             self._demo_images.append(blank)
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 'Brak obrazów testowych – używam czarnego obrazu zastępczego. '
                 'Dodaj obrazy PNG/JPG do katalogu data/test_images/.'
-            ))
+            )
 
     def _create_blank_image(self):
         """Tworzy czarny obraz zastępczy 640x480."""
@@ -110,11 +107,11 @@ class CameraInterface(Node):
     def _init_robot_cameras(self):
         """Inicjalizuje kamery sprzętowe robota (stub dla Unitree SDK)."""
         # TODO: Integracja z Unitree SDK dla prawdziwych kamer
-        self.get_logger().warn(stamp(
+        self.get_logger().warn(
             'Inicjalizacja kamer sprzętowych nie jest jeszcze zaimplementowana. '
             'Używam zastępczego obrazu. '
             'Aby włączyć prawdziwe kamery, zaimplementuj integrację z Unitree SDK.'
-        ))
+        )
         self._demo_images = [self._create_blank_image()]
 
     def _publish_images(self):

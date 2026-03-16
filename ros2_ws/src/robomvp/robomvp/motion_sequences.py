@@ -5,8 +5,7 @@ Zawiera zakodowane na stałe sekwencje trajektorii
 dla wszystkich etapów scenariusza manipulacji.
 """
 
-from robomvp.logger_utils import stamp
-from robomvp.sound_feedback import play_failure, play_success
+import time
 
 
 # Typ pozy: słownik z pozycją i orientacją (yaw w radianach)
@@ -111,9 +110,6 @@ def execute_sequence(
 ) -> bool:
     """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje w trybie demo.
 
-    Po pomyślnym wykonaniu sekwencji odtwarza dwa krótkie sygnały dźwiękowe
-    (sukces). W przypadku błędu odtwarza jeden długi, niski sygnał (porażka).
-
     Args:
         sequence: Lista poz do wykonania.
         robot_api: Interfejs API robota Unitree (None w trybie demo).
@@ -126,7 +122,8 @@ def execute_sequence(
     """
     total = len(sequence)
     if logger:
-        logger.info(stamp(f'Rozpoczynam wykonanie sekwencji {total} kroków.'))
+        logger.info(f'Rozpoczynam wykonanie sekwencji {total} kroków.')
+    start = time.monotonic()
     for i, pose in enumerate(sequence):
         elapsed_total = time.monotonic() - start
         if elapsed_total > total_timeout_s:
@@ -136,7 +133,6 @@ def execute_sequence(
                 )
             return False
 
-        step_start = time.monotonic()
         if robot_api is not None:
             try:
                 # TODO: Integracja z Unitree SDK
@@ -144,23 +140,21 @@ def execute_sequence(
                 pass
             except Exception as e:
                 if logger:
-                    logger.error(stamp(
+                    logger.error(
                         f'Błąd wykonania kroku {i + 1}/{total}: {e}. '
                         'Sprawdź połączenie z robotem i stan interfejsu SDK. '
                         'Wykonanie sekwencji zakończone błędem.'
-                    ))
-                play_failure()
+                    )
                 return False
         else:
             if logger:
-                logger.info(stamp(
+                logger.info(
                     f'[demo] Krok {i + 1}/{total}: '
                     f'x={pose.get("x", 0):.2f}, '
                     f'y={pose.get("y", 0):.2f}, '
                     f'z={pose.get("z", 0):.2f}, '
                     f'yaw={pose.get("yaw", 0):.2f}'
-                ))
+                )
     if logger:
-        logger.info(stamp(f'Sekwencja {total} kroków wykonana pomyślnie.'))
-    play_success()
+        logger.info(f'Sekwencja {total} kroków wykonana pomyślnie.')
     return True

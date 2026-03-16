@@ -13,8 +13,6 @@ import yaml
 from rclpy.node import Node
 from std_msgs.msg import String
 
-from robomvp.logger_utils import stamp
-
 from robomvp.motion_sequences import (
     apply_offset_to_sequence,
     execute_sequence,
@@ -26,8 +24,6 @@ from robomvp.motion_sequences import (
 )
 from robomvp.msg import MarkerPose, Offset
 from robomvp.msg import State as StateMsg
-from robomvp.offset_corrector import OffsetCorrector
-from robomvp.sound_feedback import play_success
 from robomvp.state_machine import State, StateMachine
 
 
@@ -36,7 +32,6 @@ class RoboMVPMain(Node):
 
     Koordynuje wszystkie komponenty:
     - Automat stanowy
-    - Korektor offsetu
     - Sekwencje ruchów
     - Komunikacja ROS2
     """
@@ -64,11 +59,9 @@ class RoboMVPMain(Node):
 
         # Inicjalizacja komponentów
         offset_scale = self._config.get('offset_scale', {})
-        self._offset_corrector = OffsetCorrector(
-            scale_dx=offset_scale.get('dx', 1.0),
-            scale_dy=offset_scale.get('dy', 1.0),
-            scale_dz=offset_scale.get('dz', 1.0),
-        )
+        self._scale_dx = float(offset_scale.get('dx', 1.0))
+        self._scale_dy = float(offset_scale.get('dy', 1.0))
+        self._scale_dz = float(offset_scale.get('dz', 1.0))
         self._state_machine = StateMachine(self._config, logger=self.get_logger())
 
         motion_timeouts = self._config.get('motion_timeouts', {})
@@ -93,10 +86,10 @@ class RoboMVPMain(Node):
         # Aktualny offset korekcji
         self._current_offset = (0.0, 0.0, 0.0)
 
-        self.get_logger().info(stamp(
+        self.get_logger().info(
             f'Węzeł główny RoboMVP uruchomiony (tryb: {self._mode}). '
             'System gotowy do pracy. Oczekiwanie na dane z czujników.'
-        ))
+        )
 
     def _load_config(self, config_path: str) -> dict:
         """Wczytuje konfigurację sceny z pliku YAML."""
@@ -116,19 +109,19 @@ class RoboMVPMain(Node):
             try:
                 with open(config_path, 'r') as f:
                     cfg = yaml.safe_load(f)
-                self.get_logger().info(stamp(f'Załadowano konfigurację sceny: {config_path}'))
+                self.get_logger().info(f'Załadowano konfigurację sceny: {config_path}')
                 return cfg or {}
             except Exception as e:
-                self.get_logger().warn(stamp(
+                self.get_logger().warn(
                     f'Błąd wczytywania konfiguracji: {e}. '
                     'Sprawdź poprawność pliku YAML i uprawnienia do odczytu. '
                     'Używam domyślnych wartości konfiguracji.'
-                ))
+                )
 
-        self.get_logger().warn(stamp(
+        self.get_logger().warn(
             'Nie znaleziono pliku konfiguracyjnego sceny. Używam domyślnej konfiguracji. '
             'Podaj ścieżkę przez parametr ROS2: --ros-args -p scene_config_path:=<ścieżka>'
-        ))
+        )
         return {
             'box_marker_id': 10,
             'table_markers': {'pickup_table': 21, 'place_table': 22},
@@ -151,7 +144,9 @@ class RoboMVPMain(Node):
 
     def _on_offset(self, msg: Offset):
         """Odbiera offset korekcji i aktualizuje automat stanowy."""
-        dx, dy, dz = self._offset_corrector.scale_offset(msg.dx, msg.dy, msg.dz)
+        dx = msg.dx * self._scale_dx
+        dy = msg.dy * self._scale_dy
+        dz = msg.dz * self._scale_dz
         self._current_offset = (dx, dy, dz)
         self._state_machine.update_offset(dx, dy, dz)
 
@@ -172,12 +167,11 @@ class RoboMVPMain(Node):
 
         # Sprawdź zakończenie
         if new_state == State.FINISHED:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Scenariusz demonstracyjny zakończony pomyślnie! '
                 'Robot odłożył pudełko na docelowy stół. '
                 'Możesz uruchomić nowy scenariusz lub zatrzymać system.'
-            ))
-            play_success()
+            )
             self._timer.cancel()
 
     def _execute_state_action(self, state: State):
@@ -185,53 +179,53 @@ class RoboMVPMain(Node):
         dx, dy, dz = self._current_offset
 
         if state == State.DETECT_MARKER:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Rozpoczynam podejście do pierwszego stołu. '
                 'Robot wykona sekwencję ruchu do pozycji roboczej.'
-            ))
+            )
             self._publish_motion('approach_table')
             sequence = apply_offset_to_sequence(get_approach_table(), dx, dy, dz)
             self._run_sequence(sequence, 'approach_table')
 
         elif state == State.ALIGN_WITH_BOX:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Wyrównuję pozycję z pudełkiem. '
                 'Oczekiwanie na offset korekcji poniżej progu.'
-            ))
+            )
             self._publish_motion('align_with_box')
 
         elif state == State.PICK_BOX:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Rozpoczynam sekwencję podniesienia pudełka. '
                 'Ramię opuszcza się do pozycji chwytu.'
-            ))
+            )
             self._publish_motion('pick_box')
             sequence = apply_offset_to_sequence(get_pick_box(), dx, dy, dz)
             self._run_sequence(sequence, 'pick_box')
 
         elif state == State.ROTATE_180:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Obracam robot o 180 stopni. '
                 'Robot zmienia orientację w kierunku docelowego stołu.'
-            ))
+            )
             self._publish_motion('rotate_180')
             sequence = get_rotate_180()
             self._run_sequence(sequence, 'rotate_180')
 
         elif state == State.NAVIGATE_TO_TARGET_MARKER:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Nawiguję do drugiego stołu. '
                 'Robot idzie w kierunku markera docelowego.'
-            ))
+            )
             self._publish_motion('walk_to_second_table')
             sequence = get_walk_to_second_table()
             self._run_sequence(sequence, 'walk_to_second_table')
 
         elif state == State.PLACE_BOX:
-            self.get_logger().info(stamp(
+            self.get_logger().info(
                 'Odkładam pudełko na docelowy stół. '
                 'Ramię opuszcza się i zwalnia chwyt.'
-            ))
+            )
             self._publish_motion('place_box')
             sequence = apply_offset_to_sequence(get_place_box(), dx, dy, dz)
             self._run_sequence(sequence, 'place_box')
@@ -259,7 +253,7 @@ class RoboMVPMain(Node):
         msg = String()
         msg.data = command
         self._pub_motion.publish(msg)
-        self.get_logger().info(stamp(f'Wysłano komendę ruchu: {command}'))
+        self.get_logger().info(f'Wysłano komendę ruchu: {command}')
 
 
 def main(args=None):
