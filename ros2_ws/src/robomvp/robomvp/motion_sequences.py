@@ -138,12 +138,17 @@ def execute_sequence(
                 pass
             except Exception as e:
                 if logger:
-                    logger.error(f'Błąd wykonania kroku {i}: {e}')
+                    logger.error(stamp(
+                        f'Błąd wykonania kroku {i + 1}/{total}: {e}. '
+                        'Sprawdź połączenie z robotem i stan interfejsu SDK. '
+                        'Wykonanie sekwencji zakończone błędem.'
+                    ))
                 return False
         else:
             if logger:
-                logger.info(
-                    f'[demo] Krok {i}: x={pose.get("x", 0):.2f}, '
+                logger.info(stamp(
+                    f'[demo] Krok {i + 1}/{total}: '
+                    f'x={pose.get("x", 0):.2f}, '
                     f'y={pose.get("y", 0):.2f}, '
                     f'z={pose.get("z", 0):.2f}, '
                     f'yaw={pose.get("yaw", 0):.2f}'
