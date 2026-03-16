@@ -40,12 +40,15 @@ Robot: **Unitree G1 EDU**
 
 Obiekty w środowisku oznaczone są markerami **AprilTag** (lub kodami QR):
 
-| Obiekt | ID markera |
-|--------|-----------|
-| Pudełko | 10 |
-| Stół startowy | 21 |
-| Stół docelowy | 22 |
-| Cel nawigacji | 30 |
+| Obiekt | Klucz w scene.yaml |
+|--------|--------------------|
+| Pudełko | `box_marker_id` |
+| Stół startowy | `table_markers.pickup_table` |
+| Stół docelowy | `table_markers.place_table` |
+| Cel nawigacji | `target_marker` |
+
+Identyfikatory markerów konfiguruje się w pliku `config/scene.yaml`.
+Nie są one zakodowane na stałe w kodzie programu.
 
 System wykrywa markery i szacuje ich **pozycję 3D względem kamery**:
 

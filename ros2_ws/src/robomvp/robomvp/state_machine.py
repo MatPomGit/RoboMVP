@@ -67,10 +67,17 @@ class StateMachine:
         self._last_pose = None
         self._last_offset = None
 
-        # Identyfikatory markerów z konfiguracji
-        self._box_marker_id = config.get('box_marker_id', 10)
-        self._pickup_table_marker = config.get('table_markers', {}).get('pickup_table', 21)
-        self._place_table_marker = config.get('table_markers', {}).get('place_table', 22)
+        # Identyfikatory markerów z konfiguracji (wymagane w scene.yaml)
+        self._box_marker_id = config.get('box_marker_id')
+        self._pickup_table_marker = config.get('table_markers', {}).get('pickup_table')
+        self._place_table_marker = config.get('table_markers', {}).get('place_table')
+
+        if self._box_marker_id is None:
+            self._log('OSTRZEŻENIE: brak box_marker_id w konfiguracji sceny.')
+        if self._pickup_table_marker is None:
+            self._log('OSTRZEŻENIE: brak table_markers.pickup_table w konfiguracji sceny.')
+        if self._place_table_marker is None:
+            self._log('OSTRZEŻENIE: brak table_markers.place_table w konfiguracji sceny.')
 
         # Progi odległości
         self._stop_distance = config.get('stop_distance_threshold', 0.3)
@@ -175,7 +182,10 @@ class StateMachine:
 
     def _handle_search_table(self):
         """Stan: szukanie stołu z pudełkiem przez detekcję markera."""
-        if self._last_marker_id == self._pickup_table_marker:
+        if (
+            self._pickup_table_marker is not None
+            and self._last_marker_id == self._pickup_table_marker
+        ):
             self._log(
                 f'Wykryto marker stołu startowego (ID={self._pickup_table_marker}). '
                 'Przechodzę do detekcji markera na pudełku.'
@@ -188,17 +198,24 @@ class StateMachine:
             )
             self._transition_to(State.DETECT_MARKER)
         else:
-            expected = self._pickup_table_marker
-            current = self._last_marker_id
+            expected = (
+                f'ID={self._pickup_table_marker}'
+                if self._pickup_table_marker is not None
+                else 'nieskonfigurowany (brak table_markers.pickup_table w scene.yaml)'
+            )
             self._log(
-                f'Szukam stołu startowego (oczekiwany marker ID={expected}, '
-                f'ostatnio wykryty: {current}). '
+                f'Szukam stołu startowego (oczekiwany marker {expected}, '
+                f'ostatnio wykryty: {self._last_marker_id}). '
                 'Upewnij się, że marker stołu jest widoczny dla kamery.'
             )
 
     def _handle_detect_marker(self):
         """Stan: wykrywanie markera na pudełku."""
-        if self._last_marker_id == self._box_marker_id and self._last_pose is not None:
+        if (
+            self._box_marker_id is not None
+            and self._last_marker_id == self._box_marker_id
+            and self._last_pose is not None
+        ):
             self._log(
                 f'Wykryto marker pudełka (ID={self._box_marker_id}). '
                 'Przechodzę do wyrównywania pozycji.'
@@ -210,8 +227,13 @@ class StateMachine:
             )
             self._transition_to(State.ALIGN_WITH_BOX)
         else:
+            expected = (
+                f'ID={self._box_marker_id}'
+                if self._box_marker_id is not None
+                else 'nieskonfigurowany (brak box_marker_id w scene.yaml)'
+            )
             self._log(
-                f'Oczekuję na marker pudełka (ID={self._box_marker_id}). '
+                f'Oczekuję na marker pudełka ({expected}). '
                 'Upewnij się, że marker na pudełku jest widoczny dla kamery ciała.'
             )
 
@@ -259,7 +281,11 @@ class StateMachine:
 
     def _handle_navigate_to_target(self):
         """Stan: nawigacja do drugiego stołu przez marker docelowy."""
-        if self._last_marker_id == self._place_table_marker and self._last_pose:
+        if (
+            self._place_table_marker is not None
+            and self._last_marker_id == self._place_table_marker
+            and self._last_pose
+        ):
             _, _, z = self._last_pose
             # Zatrzymaj gdy marker jest wystarczająco blisko
             if z < self._stop_distance:

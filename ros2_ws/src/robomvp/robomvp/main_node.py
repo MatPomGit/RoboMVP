@@ -146,9 +146,6 @@ class RoboMVPMain(Node):
             'Podaj ścieżkę przez parametr ROS2: --ros-args -p scene_config_path:=<ścieżka>'
         )
         return {
-            'box_marker_id': 10,
-            'table_markers': {'pickup_table': 21, 'place_table': 22},
-            'target_marker': 30,
             'stop_distance_threshold': 0.3,
             'alignment_threshold': 0.05,
             'offset_scale': {'dx': 1.0, 'dy': 1.0, 'dz': 1.0},
