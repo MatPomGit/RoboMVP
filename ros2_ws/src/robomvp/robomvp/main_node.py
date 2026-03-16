@@ -6,7 +6,7 @@ subskrybuje tematy percepcji i wykonuje sekwencje ruchów.
 Orkiestruje cały pipeline demonstracyjny.
 """
 
-import os
+from pathlib import Path
 
 import rclpy
 import yaml
@@ -68,6 +68,10 @@ class RoboMVPMain(Node):
         )
         self._state_machine = StateMachine(self._config, logger=self.get_logger())
 
+        motion_timeouts = self._config.get('motion_timeouts', {})
+        self._motion_total_timeout_s = float(motion_timeouts.get('total', 30.0))
+        self._motion_step_timeout_s = float(motion_timeouts.get('step', 5.0))
+
         # Subskrypcje: poza markera i offset korekcji
         self._sub_pose = self.create_subscription(
             MarkerPose, '/robomvp/marker_pose', self._on_marker_pose, 10
@@ -93,21 +97,18 @@ class RoboMVPMain(Node):
     def _load_config(self, config_path: str) -> dict:
         """Wczytuje konfigurację sceny z pliku YAML."""
         if not config_path:
-            # Szukaj pliku konfiguracji względem pakietu
+            # Szukaj pliku konfiguracji względem repozytorium i typowych ścieżek kontenera
+            current = Path(__file__).resolve()
             possible_paths = [
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    '..', '..', '..', '..', '..', '..', 'config', 'scene.yaml'
-                ),
-                '/opt/ros2_ws/config/scene.yaml',
+                *[parent / 'config' / 'scene.yaml' for parent in current.parents],
+                Path('/opt/ros2_ws/config/scene.yaml'),
             ]
-            for p in possible_paths:
-                real_p = os.path.realpath(p)
-                if os.path.isfile(real_p):
-                    config_path = real_p
+            for path in possible_paths:
+                if path.is_file():
+                    config_path = str(path)
                     break
 
-        if config_path and os.path.isfile(config_path):
+        if config_path and Path(config_path).is_file():
             try:
                 with open(config_path, 'r') as f:
                     cfg = yaml.safe_load(f)
@@ -124,6 +125,13 @@ class RoboMVPMain(Node):
             'stop_distance_threshold': 0.3,
             'alignment_threshold': 0.05,
             'offset_scale': {'dx': 1.0, 'dy': 1.0, 'dz': 1.0},
+            'state_timeouts': {
+                'search_table': 20.0,
+                'detect_marker': 20.0,
+                'align_with_box': 10.0,
+                'navigate_to_target_marker': 25.0,
+            },
+            'motion_timeouts': {'total': 30.0, 'step': 5.0},
         }
 
     def _on_marker_pose(self, msg: MarkerPose):
@@ -132,8 +140,9 @@ class RoboMVPMain(Node):
 
     def _on_offset(self, msg: Offset):
         """Odbiera offset korekcji i aktualizuje automat stanowy."""
-        self._current_offset = (msg.dx, msg.dy, msg.dz)
-        self._state_machine.update_offset(msg.dx, msg.dy, msg.dz)
+        dx, dy, dz = self._offset_corrector.scale_offset(msg.dx, msg.dy, msg.dz)
+        self._current_offset = (dx, dy, dz)
+        self._state_machine.update_offset(dx, dy, dz)
 
     def _step(self):
         """Wykonuje jeden krok automatu stanowego i reaguje na zmiany stanu."""
@@ -162,7 +171,7 @@ class RoboMVPMain(Node):
         if state == State.DETECT_MARKER:
             self._publish_motion('approach_table')
             sequence = apply_offset_to_sequence(get_approach_table(), dx, dy, dz)
-            execute_sequence(sequence, robot_api=None, logger=self.get_logger())
+            self._run_sequence(sequence, 'approach_table')
 
         elif state == State.ALIGN_WITH_BOX:
             self._publish_motion('align_with_box')
@@ -170,25 +179,40 @@ class RoboMVPMain(Node):
         elif state == State.PICK_BOX:
             self._publish_motion('pick_box')
             sequence = apply_offset_to_sequence(get_pick_box(), dx, dy, dz)
-            execute_sequence(sequence, robot_api=None, logger=self.get_logger())
+            self._run_sequence(sequence, 'pick_box')
 
         elif state == State.ROTATE_180:
             self._publish_motion('rotate_180')
             sequence = get_rotate_180()
-            execute_sequence(sequence, robot_api=None, logger=self.get_logger())
+            self._run_sequence(sequence, 'rotate_180')
 
         elif state == State.NAVIGATE_TO_TARGET_MARKER:
             self._publish_motion('walk_to_second_table')
             sequence = get_walk_to_second_table()
-            execute_sequence(sequence, robot_api=None, logger=self.get_logger())
+            self._run_sequence(sequence, 'walk_to_second_table')
 
         elif state == State.PLACE_BOX:
             self._publish_motion('place_box')
             sequence = apply_offset_to_sequence(get_place_box(), dx, dy, dz)
-            execute_sequence(sequence, robot_api=None, logger=self.get_logger())
+            self._run_sequence(sequence, 'place_box')
 
         elif state == State.FINISHED:
             self._publish_motion('finished')
+
+    def _run_sequence(self, sequence: list, sequence_name: str):
+        """Uruchamia sekwencję ruchu z timeoutami i obsługą błędów."""
+        ok = execute_sequence(
+            sequence,
+            robot_api=None,
+            logger=self.get_logger(),
+            total_timeout_s=self._motion_total_timeout_s,
+            step_timeout_s=self._motion_step_timeout_s,
+        )
+        if not ok:
+            self.get_logger().error(
+                f'Sekwencja {sequence_name} zakończyła się błędem/timeoutem - zatrzymuję timer'
+            )
+            self._timer.cancel()
 
     def _publish_motion(self, command: str):
         """Publikuje komendę ruchu na temat /robomvp/motion_command."""

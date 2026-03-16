@@ -40,3 +40,15 @@ offset_scale:
 
 # Tryb demonstracji (demo_mode / robot_mode)
 mode: demo_mode
+
+# Timeouty stanów automatu (sekundy)
+state_timeouts:
+  search_table: 20.0
+  detect_marker: 20.0
+  align_with_box: 10.0
+  navigate_to_target_marker: 25.0
+
+# Timeouty sekwencji ruchu (sekundy)
+motion_timeouts:
+  total: 30.0
+  step: 5.0
