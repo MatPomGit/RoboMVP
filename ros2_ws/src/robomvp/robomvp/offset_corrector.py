@@ -48,11 +48,7 @@ class OffsetCorrector:
         raw_dy = expected_y - measured_z  # głębokość kamery -> przód robota
         raw_dz = expected_z - measured_y  # oś Y kamery -> pionowa robota
 
-        dx = raw_dx * self._scale_dx
-        dy = raw_dy * self._scale_dy
-        dz = raw_dz * self._scale_dz
-
-        return dx, dy, dz
+        return self.scale_offset(raw_dx, raw_dy, raw_dz)
 
     def scale_offset(self, dx: float, dy: float, dz: float) -> tuple:
         """Skaluje już obliczony offset zgodnie z konfiguracją.

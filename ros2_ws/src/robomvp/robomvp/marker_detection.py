@@ -60,6 +60,7 @@ class MarkerDetectionNode(Node):
                     'Używam detektora QR jako zastępczego. '
                     'Aby zainstalować: pip install apriltag'
                 ))
+                self._marker_type = 'qr'
                 return self._init_qr_detector()
         return self._init_qr_detector()
 

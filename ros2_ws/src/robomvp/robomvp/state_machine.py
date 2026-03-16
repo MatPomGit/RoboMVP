@@ -76,7 +76,15 @@ class StateMachine:
             'navigate_to_target_marker': 25.0,
         }
         configured_timeouts = config.get('state_timeouts', {})
-        self._state_timeouts = {**default_timeouts, **configured_timeouts}
+        merged = {**default_timeouts, **configured_timeouts}
+        self._state_timeouts = {}
+        for key, val in merged.items():
+            try:
+                fval = float(val)
+            except (TypeError, ValueError):
+                continue
+            if fval >= 0.0:
+                self._state_timeouts[key] = fval
 
         self._state_enter_time = time.monotonic()
 
@@ -155,7 +163,7 @@ class StateMachine:
         if timeout_s is None:
             return False
         elapsed = time.monotonic() - self._state_enter_time
-        return elapsed >= float(timeout_s)
+        return elapsed >= timeout_s
 
     def _handle_search_table(self):
         """Stan: szukanie stołu z pudełkiem przez detekcję markera."""
