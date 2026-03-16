@@ -11,7 +11,6 @@ Tryb wybieramy parametrem launch: mode:=demo_mode lub mode:=robot_mode
 
 import os
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration

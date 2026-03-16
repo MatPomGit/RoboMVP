@@ -11,7 +11,6 @@ from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 
-from robomvp.logger_utils import stamp
 from robomvp.msg import MarkerDetection
 
 
@@ -42,10 +41,10 @@ class MarkerDetectionNode(Node):
             MarkerDetection, '/robomvp/marker_detections', 10
         )
 
-        self.get_logger().info(stamp(
+        self.get_logger().info(
             f'Węzeł detekcji markerów uruchomiony (typ: {self._marker_type}). '
             'Oczekiwanie na obrazy z kamer.'
-        ))
+        )
 
     def _init_detector(self):
         """Inicjalizuje detektor markerów AprilTag lub QR."""
@@ -55,11 +54,11 @@ class MarkerDetectionNode(Node):
                 options = apriltag.DetectorOptions(families='tag36h11')
                 return apriltag.Detector(options)
             except ImportError:
-                self.get_logger().warn(stamp(
+                self.get_logger().warn(
                     'Biblioteka apriltag niedostępna. '
                     'Używam detektora QR jako zastępczego. '
                     'Aby zainstalować: pip install apriltag'
-                ))
+                )
                 self._marker_type = 'qr'
                 return self._init_qr_detector()
         return self._init_qr_detector()
@@ -87,15 +86,15 @@ class MarkerDetectionNode(Node):
             detections = self._detect_markers(gray, cv_image)
             for detection in detections:
                 self._pub_detections.publish(detection)
-                self.get_logger().debug(stamp(
+                self.get_logger().debug(
                     f'[{source}] Wykryto marker ID={detection.marker_id} '
                     f'pos=({detection.image_x:.1f}, {detection.image_y:.1f})'
-                ))
+                )
         except Exception as e:
-            self.get_logger().error(stamp(
+            self.get_logger().error(
                 f'Błąd przetwarzania obrazu [{source}]: {e}. '
                 'Sprawdź poprawność wiadomości obrazu i instalację biblioteki cv_bridge.'
-            ))
+            )
 
     def _detect_markers(self, gray: np.ndarray, color: np.ndarray) -> list:
         """Wykrywa markery i zwraca listę wiadomości MarkerDetection."""
@@ -135,11 +134,11 @@ class MarkerDetectionNode(Node):
                 msg.size = size
                 results.append(msg)
         except Exception as e:
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 f'Błąd detekcji AprilTag: {e}. '
                 'Sprawdź, czy biblioteka apriltag jest poprawnie zainstalowana '
                 'i czy obraz ma właściwy format.'
-            ))
+            )
         return results
 
     def _detect_qr(self, color: np.ndarray) -> list:
@@ -163,11 +162,11 @@ class MarkerDetectionNode(Node):
                 msg.size = size
                 results.append(msg)
         except Exception as e:
-            self.get_logger().warn(stamp(
+            self.get_logger().warn(
                 f'Błąd detekcji QR: {e}. '
                 'Sprawdź, czy OpenCV jest poprawnie zainstalowane '
                 'i czy marker QR jest wyraźnie widoczny w obrazie.'
-            ))
+            )
         return results
 
     def _parse_qr_id(self, data: str) -> int:

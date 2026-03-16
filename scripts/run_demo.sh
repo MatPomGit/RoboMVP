@@ -15,4 +15,4 @@ echo "=== Ładowanie środowiska ==="
 source "$WS_DIR/install/setup.bash"
 
 echo "=== Uruchamianie demonstracji ==="
-ros2 launch robomvp_bringup demo.launch.py
+ros2 launch robomvp demo.launch.py

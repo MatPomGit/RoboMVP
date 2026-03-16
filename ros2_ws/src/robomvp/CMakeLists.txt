@@ -31,6 +31,11 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Instalacja plików uruchomieniowych
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
 # Testy ament
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

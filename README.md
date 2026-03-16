@@ -181,13 +181,13 @@ lub ręcznie:
 cd ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch robomvp_bringup demo.launch.py mode:=demo_mode
+ros2 launch robomvp demo.launch.py mode:=demo_mode
 ```
 
 ### Tryb robot (z prawdziwym sprzętem)
 
 ```bash
-ros2 launch robomvp_bringup demo.launch.py mode:=robot_mode
+ros2 launch robomvp demo.launch.py mode:=robot_mode
 ```
 
 ### Sprawdzenie grafu węzłów
@@ -219,32 +219,26 @@ RoboMVP/
 ├── config/
 │   ├── scene.yaml          # Konfiguracja sceny i markerów
 │   └── camera.yaml         # Kalibracja kamer
-├── data/
-│   └── test_images/        # Obrazy testowe dla trybu demo
 ├── scripts/
 │   └── run_demo.sh         # Skrypt uruchomienia
 └── ros2_ws/
     └── src/
-        ├── robomvp/
-        │   ├── CMakeLists.txt
-        │   ├── package.xml
-        │   ├── setup.py
-        │   ├── msg/
-        │   │   ├── MarkerDetection.msg
-        │   │   ├── MarkerPose.msg
-        │   │   ├── Offset.msg
-        │   │   └── State.msg
-        │   └── robomvp/
-        │       ├── camera_interface.py
-        │       ├── marker_detection.py
-        │       ├── marker_pose_estimator.py
-        │       ├── offset_corrector.py
-        │       ├── motion_sequences.py
-        │       ├── state_machine.py
-        │       └── main_node.py
-        └── robomvp_bringup/
+        └── robomvp/
             ├── CMakeLists.txt
             ├── package.xml
-            └── launch/
-                └── demo.launch.py
+            ├── setup.py
+            ├── launch/
+            │   └── demo.launch.py
+            ├── msg/
+            │   ├── MarkerDetection.msg
+            │   ├── MarkerPose.msg
+            │   ├── Offset.msg
+            │   └── State.msg
+            └── robomvp/
+                ├── camera_interface.py
+                ├── marker_detection.py
+                ├── marker_pose_estimator.py
+                ├── motion_sequences.py
+                ├── state_machine.py
+                └── main_node.py
 ```
