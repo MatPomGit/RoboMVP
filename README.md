@@ -154,7 +154,7 @@ FINISHED
 ```bash
 sudo apt update
 sudo apt install ros-humble-cv-bridge ros-humble-launch-ros
-pip install opencv-python apriltag pyyaml
+pip install opencv-python apriltag numpy pyyaml
 ```
 
 ### Budowanie pakietów
