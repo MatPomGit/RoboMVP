@@ -100,10 +100,18 @@ class MarkerDetectionNode(Node):
         """Wykrywa markery i zwraca listę wiadomości MarkerDetection."""
         results = []
 
-        if self._marker_type == 'apriltag':
+        # Prefer AprilTag detection when configured and the detector supports it.
+        if self._marker_type == 'apriltag' and hasattr(self._detector, 'detect'):
             results = self._detect_apriltags(gray)
-        else:
+        # Fallback to QR detection when the detector has the appropriate API
+        # (e.g. when AprilTag import failed and a QRCodeDetector was created).
+        elif hasattr(self._detector, 'detectAndDecode'):
             results = self._detect_qr(color)
+        else:
+            self.get_logger().error(
+                'Brak obsługi detektora markerów: nieobsługiwany typ detektora.'
+            )
+            results = []
 
         return results
 
