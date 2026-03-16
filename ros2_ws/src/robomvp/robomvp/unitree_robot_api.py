@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Interfejs sprzętowy robota Unitree G1 EDU.
 
-Zapewnia integrację z Unitree SDK 2 (unitree_sdk2py):
-- Sterowanie lokomocją (chodzenie, obroty) przez LocoClient
-- Inicjalizację połączenia DDS z robotem
+Zapewnia integrację z Unitree SDK 2 (``unitree_sdk2py``):
+- inicjalizację połączenia DDS (``ChannelFactoryInitialize``)
+- sterowanie lokomocją przez ``LocoClient`` (chodzenie, obroty)
 
-Wymaga zainstalowanego pakietu unitree_sdk2py oraz podłączonego
-i zasilonego robota przez sieć Ethernet.
+Klasa ``UnitreeRobotAPI`` jest używana wyłącznie w trybie ``robot_mode``.
+W trybie ``demo_mode`` przekazuje się ``None`` jako ``robot_api``
+do ``execute_sequence``, dzięki czemu sekwencje są tylko logowane.
 
-Instalacja SDK:
+Wymagania (tylko tryb robot):
     pip install unitree_sdk2py
 
 Przykład użycia:

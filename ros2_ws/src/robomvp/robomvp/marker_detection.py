@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
 """Moduł detekcji markerów wizualnych dla systemu RoboMVP.
 
-Subskrybuje obrazy z obu kamer i wykrywa markery AprilTag lub QR.
-Publikuje wykrycia jako wiadomości MarkerDetection.
+Węzeł ROS2 subskrybujący obrazy z obu kamer i wykrywający markery
+AprilTag (rodzina tag36h11) lub kody QR.
+
+Jeśli biblioteka ``apriltag`` nie jest dostępna, węzeł automatycznie
+przełącza się na detektor QR z OpenCV (``cv2.QRCodeDetector``).
+Kody QR powinny mieć dane w formacie ``ID:N`` lub być cyfrą całkowitą.
+
+Subskrybowane tematy:
+    /camera/body/image_raw  – obraz kamery ciała
+    /camera/head/image_raw  – obraz kamery głowy
+
+Publikowane tematy:
+    /robomvp/marker_detections  – wykryte markery (robomvp/MarkerDetection)
+
+Parametry ROS2:
+    marker_type  – typ markera: ``apriltag`` (domyślnie) lub ``qr``
 """
 
 import numpy as np

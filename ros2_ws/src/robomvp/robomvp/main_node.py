@@ -1,9 +1,28 @@
 #!/usr/bin/env python3
 """Główny węzeł RoboMVP.
 
-Ładuje konfigurację, uruchamia automat stanowy,
-subskrybuje tematy percepcji i wykonuje sekwencje ruchów.
-Orkiestruje cały pipeline demonstracyjny.
+Orkiestruje cały pipeline demonstracyjny:
+- wczytuje konfigurację sceny z pliku ``scene.yaml``,
+- inicjalizuje automat stanowy (``StateMachine``),
+- w trybie robot nawiązuje połączenie z robotem przez ``UnitreeRobotAPI``,
+- subskrybuje tematy percepcji (poza markera, offset korekcji),
+- na każdym kroku timera wywołuje krok automatu stanowego i uruchamia
+  odpowiednie sekwencje ruchów z modułu ``motion_sequences``,
+- publikuje aktualny stan automatu i komendy ruchu.
+
+Subskrybowane tematy:
+    /robomvp/marker_pose  – poza 3D markera (robomvp/MarkerPose)
+    /robomvp/offset       – offset korekcji pozycji (robomvp/Offset)
+
+Publikowane tematy:
+    /robomvp/state          – aktualny stan automatu (robomvp/State)
+    /robomvp/motion_command – nazwa wykonywanej sekwencji (std_msgs/String)
+
+Parametry ROS2:
+    scene_config_path  – ścieżka do pliku ``scene.yaml``
+    mode               – tryb pracy: ``demo_mode`` lub ``robot_mode``
+    step_period        – okres kroku automatu [s], domyślnie 1.0
+    network_interface  – interfejs Ethernet do robota, domyślnie ``eth0``
 """
 
 from pathlib import Path
@@ -127,9 +146,6 @@ class RoboMVPMain(Node):
             'Podaj ścieżkę przez parametr ROS2: --ros-args -p scene_config_path:=<ścieżka>'
         )
         return {
-            'box_marker_id': 10,
-            'table_markers': {'pickup_table': 21, 'place_table': 22},
-            'target_marker': 30,
             'stop_distance_threshold': 0.3,
             'alignment_threshold': 0.05,
             'offset_scale': {'dx': 1.0, 'dy': 1.0, 'dz': 1.0},

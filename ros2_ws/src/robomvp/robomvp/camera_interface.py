@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
 """Interfejs kamer dla systemu RoboMVP.
 
-Obsługuje wyłącznie rzeczywiste kamery robota.
+Węzeł ROS2 publikujący obrazy z obu kamer robota Unitree G1 EDU.
+Obsługuje dwa tryby pracy:
 
-Wymagana jest kamera ciała (manipulacja, bliskie markery).
-Kamera głowy (nawigacja, dalekie markery) jest opcjonalna: gdy nie jest
-podłączona, węzeł publikuje obraz z kamery ciała również na temat głowy.
+- **demo_mode**: wczytuje obrazy PNG/JPG z katalogu ``data/test_images/``
+  i publikuje je cyklicznie na tematy kamer. Nie wymaga sprzętu.
+- **robot_mode**: otwiera kamery sprzętowe przez OpenCV VideoCapture
+  korzystając z konfigurowalnych indeksów urządzeń V4L2
+  (``body_camera_device``, ``head_camera_device``).
+
+Publikowane tematy:
+    /camera/body/image_raw  – obraz kamery ciała (manipulacja, bliskie markery)
+    /camera/head/image_raw  – obraz kamery głowy (nawigacja, dalekie markery)
+
+Parametry ROS2:
+    mode               – tryb pracy: ``demo_mode`` lub ``robot_mode``
+    test_images_path   – ścieżka do katalogu z obrazami testowymi (tryb demo)
+    publish_rate       – częstotliwość publikacji [Hz], domyślnie 10.0
+    body_camera_device – indeks urządzenia V4L2 kamery ciała, domyślnie 0
+    head_camera_device – indeks urządzenia V4L2 kamery głowy, domyślnie 1
+"""
 
 Węzeł otwiera kamery sprzętowe przez OpenCV VideoCapture korzystając
 z konfigurowalnych indeksów urządzeń V4L2 (body_camera_device,

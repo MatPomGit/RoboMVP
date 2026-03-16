@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 """Moduł estymacji pozy markerów dla systemu RoboMVP.
 
-Subskrybuje wykrycia markerów i oblicza ich pozycję 3D
-używając parametrów kalibracji kamery.
-Publikuje pozę markera oraz obliczony offset korekcji.
+Węzeł ROS2 obliczający pozycję 3D wykrytych markerów na podstawie ich
+rozmiaru w obrazie i parametrów kalibracji kamery (model aparatu otworkowego).
+
+Wynik publikowany jest jako poza markera (x, y, z w metrach względem kamery)
+oraz jako offset korekcji (dx, dy, dz) używany przez automat stanowy
+do wyrównania pozycji robota z pudełkiem.
+
+Subskrybowane tematy:
+    /robomvp/marker_detections  – wykryte markery (robomvp/MarkerDetection)
+
+Publikowane tematy:
+    /robomvp/marker_pose  – poza 3D markera (robomvp/MarkerPose)
+    /robomvp/offset       – offset korekcji pozycji (robomvp/Offset)
+
+Parametry ROS2:
+    camera_config_path  – ścieżka do pliku kalibracji ``camera.yaml``
+    marker_size         – rzeczywisty rozmiar boku markera [m], domyślnie 0.1
 """
 
 import math

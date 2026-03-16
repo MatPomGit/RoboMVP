@@ -1,15 +1,32 @@
 #!/usr/bin/env python3
-"""Moduł predefiniowanych sekwencji ruchów dla robota Unitree G1 EDU.
+"""Predefiniowane sekwencje ruchów robota Unitree G1 EDU.
 
-Zawiera zakodowane na stałe sekwencje trajektorii
-dla wszystkich etapów scenariusza manipulacji.
+Moduł zawiera zakodowane na stałe sekwencje trajektorii (listy poz)
+dla wszystkich etapów scenariusza demonstracyjnego manipulacji.
+Każda poza to słownik z polami:
+    x   – przesunięcie boczne [m]
+    y   – przesunięcie do przodu [m]
+    z   – wysokość ramienia [m]
+    yaw – orientacja [rad]
+
+Sekwencje wykonywane są przez funkcję ``execute_sequence``, która
+deleguje sterowanie do interfejsu ``UnitreeRobotAPI`` (tryb robot)
+lub loguje kolejne kroki przez logger ROS2 (tryb demo).
+
+Dostępne sekwencje:
+    get_approach_table()        – podejście do pierwszego stołu
+    get_pick_box()              – podniesienie pudełka
+    get_rotate_180()            – obrót o 180 stopni
+    get_walk_to_second_table()  – chodzenie do drugiego stołu
+    get_place_box()             – odłożenie pudełka na drugi stół
 """
 
 import time
 
 
-# Typ pozy: słownik z pozycją i orientacją (yaw w radianach)
-# Format: {'x': float, 'y': float, 'z': float, 'yaw': float}
+# Format pozy: słownik {'x': float, 'y': float, 'z': float, 'yaw': float}
+# Pola: x – przesunięcie boczne [m], y – przód/tył [m],
+#        z – wysokość ramienia [m], yaw – orientacja [rad]
 
 
 def get_approach_table() -> list:
