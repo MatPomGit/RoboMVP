@@ -4,6 +4,9 @@
 
 RoboMVP to minimalna aplikacja ROS2 demonstrująca scenariusz manipulacji dla robota humanoidalnego **Unitree G1 EDU**. Projekt realizuje **MVP (Minimum Viable Product)** — prosty, deterministyczny pipeline bez uczenia maszynowego, gotowy do uruchomienia w ciągu 2 tygodni.
 
+> 📖 **Szczegółowa dokumentacja techniczna**: [docs/sterowanie_robotem.md](docs/sterowanie_robotem.md)
+> — Jak przekazywane są komendy SDK i ROS2, czym jest Sport Mode oraz jak sterować górną i dolną częścią ciała niezależnie.
+
 ---
 
 ## Scenariusz demonstracyjny
