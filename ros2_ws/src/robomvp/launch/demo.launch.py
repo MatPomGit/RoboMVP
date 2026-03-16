@@ -44,6 +44,21 @@ def generate_launch_description():
         default_value='apriltag',
         description='Typ markera: apriltag lub qr',
     )
+    network_interface_arg = DeclareLaunchArgument(
+        'network_interface',
+        default_value='eth0',
+        description='Interfejs sieciowy Ethernet podłączony do robota (np. eth0, enp3s0)',
+    )
+    body_camera_device_arg = DeclareLaunchArgument(
+        'body_camera_device',
+        default_value='0',
+        description='Indeks urządzenia V4L2 dla kamery ciała (np. 0 dla /dev/video0)',
+    )
+    head_camera_device_arg = DeclareLaunchArgument(
+        'head_camera_device',
+        default_value='1',
+        description='Indeks urządzenia V4L2 dla kamery głowy (np. 1 dla /dev/video1)',
+    )
 
     # Węzeł interfejsu kamery
     camera_interface_node = Node(
@@ -55,6 +70,8 @@ def generate_launch_description():
             'mode': LaunchConfiguration('mode'),
             'test_images_path': test_images,
             'publish_rate': 10.0,
+            'body_camera_device': LaunchConfiguration('body_camera_device'),
+            'head_camera_device': LaunchConfiguration('head_camera_device'),
         }],
     )
 
@@ -91,12 +108,16 @@ def generate_launch_description():
             'scene_config_path': scene_config,
             'mode': LaunchConfiguration('mode'),
             'step_period': 1.0,
+            'network_interface': LaunchConfiguration('network_interface'),
         }],
     )
 
     return LaunchDescription([
         mode_arg,
         marker_type_arg,
+        network_interface_arg,
+        body_camera_device_arg,
+        head_camera_device_arg,
         camera_interface_node,
         marker_detection_node,
         marker_pose_estimator_node,

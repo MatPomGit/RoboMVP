@@ -2,3 +2,8 @@ opencv-python>=4.5.0
 apriltag>=0.0.16
 numpy>=1.21.0
 pyyaml>=6.0
+
+# Opcjonalna zależność sprzętowa – wymagana tylko w trybie robot_mode.
+# Zapewnia integrację z Unitree SDK 2 (LocoClient, ChannelFactoryInitialize).
+# Instalacja: pip install unitree_sdk2py
+# unitree_sdk2py

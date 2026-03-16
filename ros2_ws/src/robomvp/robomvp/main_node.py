@@ -25,6 +25,7 @@ from robomvp.motion_sequences import (
 from robomvp.msg import MarkerPose, Offset
 from robomvp.msg import State as StateMsg
 from robomvp.state_machine import State, StateMachine
+from robomvp.unitree_robot_api import UnitreeRobotAPI
 
 
 class RoboMVPMain(Node):
@@ -43,6 +44,7 @@ class RoboMVPMain(Node):
         self.declare_parameter('scene_config_path', '')
         self.declare_parameter('mode', 'demo_mode')
         self.declare_parameter('step_period', 1.0)
+        self.declare_parameter('network_interface', 'eth0')
 
         scene_config_path = (
             self.get_parameter('scene_config_path')
@@ -53,9 +55,26 @@ class RoboMVPMain(Node):
         step_period = (
             self.get_parameter('step_period').get_parameter_value().double_value
         )
+        network_interface = (
+            self.get_parameter('network_interface').get_parameter_value().string_value
+        )
 
         # Wczytanie konfiguracji sceny
         self._config = self._load_config(scene_config_path)
+
+        # Inicjalizacja interfejsu sprzętowego robota (tylko w trybie robot)
+        self._robot_api = None
+        if self._mode == 'robot_mode':
+            self._robot_api = UnitreeRobotAPI(network_interface=network_interface)
+            try:
+                self._robot_api.connect(logger=self.get_logger())
+            except RuntimeError as exc:
+                self.get_logger().error(
+                    f'Nie można połączyć z robotem: {exc}. '
+                    'Węzeł będzie działał bez sterowania sprzętowego. '
+                    'Uruchom ponownie po poprawieniu połączenia z robotem.'
+                )
+                self._robot_api = None
 
         # Inicjalizacja komponentów
         offset_scale = self._config.get('offset_scale', {})
@@ -237,7 +256,7 @@ class RoboMVPMain(Node):
         """Uruchamia sekwencję ruchu z timeoutami i obsługą błędów."""
         ok = execute_sequence(
             sequence,
-            robot_api=None,
+            robot_api=self._robot_api,
             logger=self.get_logger(),
             total_timeout_s=self._motion_total_timeout_s,
             step_timeout_s=self._motion_step_timeout_s,
@@ -254,6 +273,13 @@ class RoboMVPMain(Node):
         msg.data = command
         self._pub_motion.publish(msg)
         self.get_logger().info(f'Wysłano komendę ruchu: {command}')
+
+    def destroy_node(self):
+        """Rozłącza robota i niszczy węzeł."""
+        if self._robot_api is not None:
+            self._robot_api.disconnect()
+            self._robot_api = None
+        super().destroy_node()
 
 
 def main(args=None):

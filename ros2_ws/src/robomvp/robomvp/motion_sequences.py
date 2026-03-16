@@ -135,9 +135,7 @@ def execute_sequence(
 
         if robot_api is not None:
             try:
-                # TODO: Integracja z Unitree SDK
-                # robot_api.move_to_pose(pose, timeout_s=step_timeout_s)
-                pass
+                robot_api.move_to_pose(pose, timeout_s=step_timeout_s)
             except Exception as e:
                 if logger:
                     logger.error(
