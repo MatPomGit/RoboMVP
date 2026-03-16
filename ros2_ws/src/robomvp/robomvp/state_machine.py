@@ -7,6 +7,7 @@ PICK_BOX -> ROTATE_180 -> NAVIGATE_TO_TARGET_MARKER ->
 PLACE_BOX -> FINISHED
 """
 
+import time
 from enum import IntEnum
 
 from robomvp.logger_utils import stamp
@@ -62,11 +63,22 @@ class StateMachine:
         self._box_marker_id = config.get('box_marker_id', 10)
         self._pickup_table_marker = config.get('table_markers', {}).get('pickup_table', 21)
         self._place_table_marker = config.get('table_markers', {}).get('place_table', 22)
-        self._target_marker = config.get('target_marker', 30)
 
         # Progi odległości
         self._stop_distance = config.get('stop_distance_threshold', 0.3)
         self._align_threshold = config.get('alignment_threshold', 0.05)
+
+        # Timeouty stanów (sekundy)
+        default_timeouts = {
+            'search_table': 20.0,
+            'detect_marker': 20.0,
+            'align_with_box': 10.0,
+            'navigate_to_target_marker': 25.0,
+        }
+        configured_timeouts = config.get('state_timeouts', {})
+        self._state_timeouts = {**default_timeouts, **configured_timeouts}
+
+        self._state_enter_time = time.monotonic()
 
     @property
     def current_state(self) -> State:
@@ -134,7 +146,16 @@ class StateMachine:
         old_name = STATE_NAMES[self._state]
         new_name = STATE_NAMES[new_state]
         self._state = new_state
-        self._log(stamp(f'Zmiana stanu: {old_name} -> {new_name}'))
+        self._state_enter_time = time.monotonic()
+        self._log(f'Przejście stanu: {old_name} -> {new_name}')
+
+    def _is_timeout(self, key: str) -> bool:
+        """Sprawdza czy upłynął timeout dla bieżącego stanu."""
+        timeout_s = self._state_timeouts.get(key)
+        if timeout_s is None:
+            return False
+        elapsed = time.monotonic() - self._state_enter_time
+        return elapsed >= float(timeout_s)
 
     def _handle_search_table(self):
         """Stan: szukanie stołu z pudełkiem przez detekcję markera."""
@@ -144,14 +165,11 @@ class StateMachine:
                 'Przechodzę do detekcji markera na pudełku.'
             ))
             self._transition_to(State.DETECT_MARKER)
-        else:
-            expected = self._pickup_table_marker
-            current = self._last_marker_id
-            self._log(stamp(
-                f'Szukam stołu startowego (oczekiwany marker ID={expected}, '
-                f'ostatnio wykryty: {current}). '
-                'Upewnij się, że marker stołu jest widoczny dla kamery.'
-            ))
+            return
+
+        if self._is_timeout('search_table'):
+            self._log('Timeout SEARCH_TABLE - przejście awaryjne do DETECT_MARKER')
+            self._transition_to(State.DETECT_MARKER)
 
     def _handle_detect_marker(self):
         """Stan: wykrywanie markera na pudełku."""
@@ -161,28 +179,23 @@ class StateMachine:
                 'Przechodzę do wyrównywania pozycji.'
             ))
             self._transition_to(State.ALIGN_WITH_BOX)
-        else:
-            self._log(stamp(
-                f'Oczekuję na marker pudełka (ID={self._box_marker_id}). '
-                'Upewnij się, że marker na pudełku jest widoczny dla kamery ciała.'
-            ))
+            return
+
+        if self._is_timeout('detect_marker'):
+            self._log('Timeout DETECT_MARKER - przejście awaryjne do ALIGN_WITH_BOX')
+            self._transition_to(State.ALIGN_WITH_BOX)
 
     def _handle_align_with_box(self):
         """Stan: wyrównanie pozycji z pudełkiem używając korekcji offsetu."""
-        if self._last_offset is None:
-            self._log(stamp(
-                'Oczekuję na dane offsetu korekcji. '
-                'Sprawdź, czy węzeł estymacji pozy markerów jest uruchomiony.'
-            ))
-            return
-        dx, dy, dz = self._last_offset
-        # Wyrównanie zakończone gdy offset mieści się w progu
-        if abs(dx) < self._align_threshold and abs(dz) < self._align_threshold:
-            self._log(stamp(
-                f'Wyrównanie zakończone (|dx|={abs(dx):.4f}, |dz|={abs(dz):.4f} m, '
-                f'próg={self._align_threshold:.4f} m). '
-                'Przechodzę do podniesienia pudełka.'
-            ))
+        if self._last_offset is not None:
+            dx, _, dz = self._last_offset
+            # Wyrównanie zakończone gdy offset mieści się w progu
+            if abs(dx) < self._align_threshold and abs(dz) < self._align_threshold:
+                self._transition_to(State.PICK_BOX)
+                return
+
+        if self._is_timeout('align_with_box'):
+            self._log('Timeout ALIGN_WITH_BOX - przejście awaryjne do PICK_BOX')
             self._transition_to(State.PICK_BOX)
         else:
             self._log(stamp(
@@ -216,16 +229,13 @@ class StateMachine:
                     'Przechodzę do odkładania pudełka.'
                 ))
                 self._transition_to(State.PLACE_BOX)
-            else:
-                self._log(stamp(
-                    f'Zbliżam się do docelowego stołu: '
-                    f'z={z:.3f} m (wymagane < {self._stop_distance:.3f} m).'
-                ))
-        else:
-            self._log(stamp(
-                f'Szukam markera docelowego stołu (ID={self._place_table_marker}). '
-                'Upewnij się, że marker docelowego stołu jest widoczny dla kamery głowy.'
-            ))
+                return
+
+        if self._is_timeout('navigate_to_target_marker'):
+            self._log(
+                'Timeout NAVIGATE_TO_TARGET_MARKER - przejście awaryjne do PLACE_BOX'
+            )
+            self._transition_to(State.PLACE_BOX)
 
     def _handle_place_box(self):
         """Stan: odłożenie pudełka na drugi stół."""
