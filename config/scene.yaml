@@ -1,0 +1,42 @@
+# Konfiguracja sceny dla RoboMVP
+# Zawiera identyfikatory markerów, oczekiwane pozycje i cele nawigacji
+
+# Identyfikator markera na pudełku
+box_marker_id: 10
+
+# Identyfikatory markerów na stołach
+table_markers:
+  pickup_table: 21
+  place_table: 22
+
+# Marker celu nawigacji
+target_marker: 30
+
+# Oczekiwane pozycje markerów względem robota (metry)
+# Format: {x: float, y: float, z: float}
+expected_marker_positions:
+  box:
+    x: 0.0
+    y: 0.5
+    z: 0.8
+  pickup_table:
+    x: 0.0
+    y: 1.0
+    z: 0.75
+  place_table:
+    x: 0.0
+    y: 1.0
+    z: 0.75
+
+# Progi odległości do zatrzymania (metry)
+stop_distance_threshold: 0.3
+alignment_threshold: 0.05
+
+# Współczynniki skalowania korekty offsetu
+offset_scale:
+  dx: 1.0
+  dy: 1.0
+  dz: 1.0
+
+# Tryb demonstracji (demo_mode / robot_mode)
+mode: demo_mode

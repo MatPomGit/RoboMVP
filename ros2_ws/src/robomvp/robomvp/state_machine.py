@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Deterministyczny automat stanowy dla systemu RoboMVP.
+
+Implementuje sekwencję stanów scenariusza manipulacji:
+SEARCH_TABLE -> DETECT_MARKER -> ALIGN_WITH_BOX ->
+PICK_BOX -> ROTATE_180 -> NAVIGATE_TO_TARGET_MARKER ->
+PLACE_BOX -> FINISHED
+"""
+
+from enum import IntEnum
+
+
+class State(IntEnum):
+    """Stany automatu stanowego scenariusza manipulacji."""
+    SEARCH_TABLE = 0
+    DETECT_MARKER = 1
+    ALIGN_WITH_BOX = 2
+    PICK_BOX = 3
+    ROTATE_180 = 4
+    NAVIGATE_TO_TARGET_MARKER = 5
+    PLACE_BOX = 6
+    FINISHED = 7
+
+
+# Nazwy stanów do publikacji na tematy ROS2
+STATE_NAMES = {
+    State.SEARCH_TABLE: 'SEARCH_TABLE',
+    State.DETECT_MARKER: 'DETECT_MARKER',
+    State.ALIGN_WITH_BOX: 'ALIGN_WITH_BOX',
+    State.PICK_BOX: 'PICK_BOX',
+    State.ROTATE_180: 'ROTATE_180',
+    State.NAVIGATE_TO_TARGET_MARKER: 'NAVIGATE_TO_TARGET_MARKER',
+    State.PLACE_BOX: 'PLACE_BOX',
+    State.FINISHED: 'FINISHED',
+}
+
+
+class StateMachine:
+    """Deterministyczny automat stanowy scenariusza manipulacji.
+
+    Zarządza przejściami między stanami na podstawie
+    wykrytych markerów i zakończonych sekwencji ruchów.
+    """
+
+    def __init__(self, config: dict, logger=None):
+        """Inicjalizuje automat stanowy z konfiguracją sceny.
+
+        Args:
+            config: Słownik z parametrami konfiguracji scene.yaml.
+            logger: Logger ROS2.
+        """
+        self._config = config
+        self._logger = logger
+        self._state = State.SEARCH_TABLE
+        self._last_marker_id = None
+        self._last_pose = None
+        self._last_offset = None
+
+        # Identyfikatory markerów z konfiguracji
+        self._box_marker_id = config.get('box_marker_id', 10)
+        self._pickup_table_marker = config.get('table_markers', {}).get('pickup_table', 21)
+        self._place_table_marker = config.get('table_markers', {}).get('place_table', 22)
+        self._target_marker = config.get('target_marker', 30)
+
+        # Progi odległości
+        self._stop_distance = config.get('stop_distance_threshold', 0.3)
+        self._align_threshold = config.get('alignment_threshold', 0.05)
+
+    @property
+    def current_state(self) -> State:
+        """Zwraca aktualny stan automatu."""
+        return self._state
+
+    @property
+    def current_state_name(self) -> str:
+        """Zwraca nazwę aktualnego stanu."""
+        return STATE_NAMES[self._state]
+
+    def update_marker(self, marker_id: int, x: float, y: float, z: float):
+        """Aktualizuje ostatnio wykryty marker.
+
+        Args:
+            marker_id: Identyfikator markera.
+            x, y, z: Pozycja markera względem kamery.
+        """
+        self._last_marker_id = marker_id
+        self._last_pose = (x, y, z)
+        self._log(f'Wykryto marker {marker_id} na pozycji ({x:.3f}, {y:.3f}, {z:.3f})')
+
+    def update_offset(self, dx: float, dy: float, dz: float):
+        """Aktualizuje ostatni obliczony offset korekcji.
+
+        Args:
+            dx, dy, dz: Wartości korekcji w metrach.
+        """
+        self._last_offset = (dx, dy, dz)
+
+    def step(self) -> State:
+        """Wykonuje jeden krok automatu stanowego.
+
+        Sprawdza warunki przejścia i zmienia stan jeśli warunki są spełnione.
+
+        Returns:
+            Nowy (lub aktualny) stan po wykonaniu kroku.
+        """
+        if self._state == State.SEARCH_TABLE:
+            self._handle_search_table()
+        elif self._state == State.DETECT_MARKER:
+            self._handle_detect_marker()
+        elif self._state == State.ALIGN_WITH_BOX:
+            self._handle_align_with_box()
+        elif self._state == State.PICK_BOX:
+            self._handle_pick_box()
+        elif self._state == State.ROTATE_180:
+            self._handle_rotate_180()
+        elif self._state == State.NAVIGATE_TO_TARGET_MARKER:
+            self._handle_navigate_to_target()
+        elif self._state == State.PLACE_BOX:
+            self._handle_place_box()
+
+        return self._state
+
+    def _transition_to(self, new_state: State):
+        """Przechodzi do nowego stanu i loguje przejście."""
+        old_name = STATE_NAMES[self._state]
+        new_name = STATE_NAMES[new_state]
+        self._state = new_state
+        self._log(f'Przejście stanu: {old_name} -> {new_name}')
+
+    def _handle_search_table(self):
+        """Stan: szukanie stołu z pudełkiem przez detekcję markera."""
+        if self._last_marker_id == self._pickup_table_marker:
+            self._transition_to(State.DETECT_MARKER)
+
+    def _handle_detect_marker(self):
+        """Stan: wykrywanie markera na pudełku."""
+        if self._last_marker_id == self._box_marker_id and self._last_pose is not None:
+            self._transition_to(State.ALIGN_WITH_BOX)
+
+    def _handle_align_with_box(self):
+        """Stan: wyrównanie pozycji z pudełkiem używając korekcji offsetu."""
+        if self._last_offset is None:
+            return
+        dx, dy, dz = self._last_offset
+        # Wyrównanie zakończone gdy offset mieści się w progu
+        if abs(dx) < self._align_threshold and abs(dz) < self._align_threshold:
+            self._transition_to(State.PICK_BOX)
+
+    def _handle_pick_box(self):
+        """Stan: podniesienie pudełka (sekwencja zakończona)."""
+        # W pełnej implementacji: czekamy na zakończenie sekwencji pick_box
+        # W MVP: przejście natychmiastowe po wykonaniu sekwencji
+        self._transition_to(State.ROTATE_180)
+
+    def _handle_rotate_180(self):
+        """Stan: obrót o 180 stopni (sekwencja zakończona)."""
+        # W pełnej implementacji: czekamy na zakończenie sekwencji rotate_180
+        self._transition_to(State.NAVIGATE_TO_TARGET_MARKER)
+
+    def _handle_navigate_to_target(self):
+        """Stan: nawigacja do drugiego stołu przez marker docelowy."""
+        if self._last_marker_id == self._place_table_marker and self._last_pose:
+            _, _, z = self._last_pose
+            # Zatrzymaj gdy marker jest wystarczająco blisko
+            if z < self._stop_distance:
+                self._transition_to(State.PLACE_BOX)
+
+    def _handle_place_box(self):
+        """Stan: odłożenie pudełka na drugi stół."""
+        self._transition_to(State.FINISHED)
+
+    def _log(self, message: str):
+        """Loguje wiadomość przez logger ROS2 lub stdout."""
+        if self._logger:
+            self._logger.info(f'[StateMachine] {message}')
+        else:
+            print(f'[StateMachine] {message}')

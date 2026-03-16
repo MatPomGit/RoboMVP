@@ -1,0 +1,47 @@
+# Kalibracja kamery dla RoboMVP
+# Parametry wewnętrzne i współczynniki dystorsji dla obu kamer
+
+# Kamera ciała (manipulacja, bliskie markery)
+body_camera:
+  # Rozdzielczość obrazu
+  width: 640
+  height: 480
+  # Macierz wewnętrzna kamery [fx, 0, cx; 0, fy, cy; 0, 0, 1]
+  camera_matrix:
+    fx: 600.0
+    fy: 600.0
+    cx: 320.0
+    cy: 240.0
+  # Współczynniki dystorsji [k1, k2, p1, p2, k3]
+  distortion_coeffs:
+    k1: -0.05
+    k2: 0.02
+    p1: 0.001
+    p2: 0.001
+    k3: 0.0
+  # Temat ROS2
+  ros_topic: /camera/body/image_raw
+
+# Kamera głowy (nawigacja, dalekie markery)
+head_camera:
+  # Rozdzielczość obrazu
+  width: 1280
+  height: 720
+  # Macierz wewnętrzna kamery [fx, 0, cx; 0, fy, cy; 0, 0, 1]
+  camera_matrix:
+    fx: 900.0
+    fy: 900.0
+    cx: 640.0
+    cy: 360.0
+  # Współczynniki dystorsji [k1, k2, p1, p2, k3]
+  distortion_coeffs:
+    k1: -0.03
+    k2: 0.01
+    p1: 0.0005
+    p2: 0.0005
+    k3: 0.0
+  # Temat ROS2
+  ros_topic: /camera/head/image_raw
+
+# Rozmiar markera AprilTag (metry)
+marker_size: 0.1

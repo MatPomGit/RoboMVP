@@ -1,0 +1,22 @@
+# Artefakty budowania ROS2
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Pliki Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Środowiska wirtualne
+.venv/
+venv/
+
+# Pliki systemowe
+.DS_Store
+*.swp
+*.swo
+
+# Dane testowe generowane
+data/test_images/*.generated.*
