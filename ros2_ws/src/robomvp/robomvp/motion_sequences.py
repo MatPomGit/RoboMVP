@@ -5,6 +5,8 @@ Zawiera zakodowane na stałe sekwencje trajektorii
 dla wszystkich etapów scenariusza manipulacji.
 """
 
+from robomvp.logger_utils import stamp
+
 
 # Typ pozy: słownik z pozycją i orientacją (yaw w radianach)
 # Format: {'x': float, 'y': float, 'z': float, 'yaw': float}
@@ -110,6 +112,9 @@ def execute_sequence(sequence: list, robot_api=None, logger=None) -> bool:
     Returns:
         True jeśli sekwencja wykonana pomyślnie, False w przypadku błędu.
     """
+    total = len(sequence)
+    if logger:
+        logger.info(stamp(f'Rozpoczynam wykonanie sekwencji {total} kroków.'))
     for i, pose in enumerate(sequence):
         if robot_api is not None:
             try:
@@ -118,14 +123,21 @@ def execute_sequence(sequence: list, robot_api=None, logger=None) -> bool:
                 pass
             except Exception as e:
                 if logger:
-                    logger.error(f'Błąd wykonania kroku {i}: {e}')
+                    logger.error(stamp(
+                        f'Błąd wykonania kroku {i + 1}/{total}: {e}. '
+                        'Sprawdź połączenie z robotem i stan interfejsu SDK. '
+                        'Wykonanie sekwencji zakończone błędem.'
+                    ))
                 return False
         else:
             if logger:
-                logger.info(
-                    f'[demo] Krok {i}: x={pose.get("x", 0):.2f}, '
+                logger.info(stamp(
+                    f'[demo] Krok {i + 1}/{total}: '
+                    f'x={pose.get("x", 0):.2f}, '
                     f'y={pose.get("y", 0):.2f}, '
                     f'z={pose.get("z", 0):.2f}, '
                     f'yaw={pose.get("yaw", 0):.2f}'
-                )
+                ))
+    if logger:
+        logger.info(stamp(f'Sekwencja {total} kroków wykonana pomyślnie.'))
     return True
