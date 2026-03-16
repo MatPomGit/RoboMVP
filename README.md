@@ -172,9 +172,11 @@ source install/setup.bash
 
 ---
 
-## Uruchomienie demonstracji
+## Uruchomienie
 
-### Tryb demo (bez sprzętu)
+Aplikacja działa wyłącznie z rzeczywistymi kamerami. Połączenie z robotem jest opcjonalne (możliwe uruchomienie bez robota, z logowaniem sekwencji ruchu).
+
+Jeśli robot ma tylko jedną kamerę, uruchom z parametrem `head_camera_device:=-1` (strumień głowy będzie mapowany na kamerę ciała).
 
 ```bash
 bash scripts/run_demo.sh
@@ -186,13 +188,7 @@ lub ręcznie:
 cd ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch robomvp demo.launch.py mode:=demo_mode
-```
-
-### Tryb robot (z prawdziwym sprzętem)
-
-```bash
-ros2 launch robomvp demo.launch.py mode:=robot_mode
+ros2 launch robomvp demo.launch.py head_camera_device:=-1 require_robot_connection:=false
 ```
 
 ### Sprawdzenie grafu węzłów
@@ -225,7 +221,7 @@ RoboMVP/
 │   ├── scene.yaml          # Konfiguracja sceny i markerów
 │   └── camera.yaml         # Kalibracja kamer
 ├── scripts/
-│   └── run_demo.sh         # Skrypt uruchomienia
+│   └── run_demo.sh         # Skrypt uruchomienia (sprzęt rzeczywisty)
 └── ros2_ws/
     └── src/
         └── robomvp/

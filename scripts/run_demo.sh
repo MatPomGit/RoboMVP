@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Skrypt pomocniczy do uruchamiania demonstracji RoboMVP
-# Buduje pakiety ROS2, ładuje środowisko i uruchamia demo
+# Skrypt pomocniczy do uruchamiania RoboMVP na rzeczywistym sprzęcie
+# Buduje pakiety ROS2, ładuje środowisko i uruchamia system
 
 set -e
 
@@ -14,5 +14,5 @@ colcon build --symlink-install
 echo "=== Ładowanie środowiska ==="
 source "$WS_DIR/install/setup.bash"
 
-echo "=== Uruchamianie demonstracji ==="
+echo "=== Uruchamianie RoboMVP (kamery rzeczywiste) ==="
 ros2 launch robomvp demo.launch.py

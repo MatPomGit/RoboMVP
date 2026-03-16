@@ -1,12 +1,10 @@
-"""Plik uruchomieniowy dla demonstracji systemu RoboMVP.
+"""Plik uruchomieniowy dla systemu RoboMVP.
 
 Uruchamia węzły w kolejności:
-1. camera_interface - publikuje obrazy kamer
+1. camera_interface - publikuje obrazy z rzeczywistych kamer
 2. marker_detection - wykrywa markery w obrazach
 3. marker_pose_estimator - oblicza pozycje 3D markerów
 4. robomvp_main - główny węzeł sterujący
-
-Tryb wybieramy parametrem launch: mode:=demo_mode lub mode:=robot_mode
 """
 
 import os
@@ -20,7 +18,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     """Generuje opis uruchomienia dla systemu RoboMVP."""
 
-    # Ścieżka do katalogu konfiguracji
     config_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.abspath(__file__))
@@ -29,16 +26,7 @@ def generate_launch_description():
     )
     scene_config = os.path.join(config_dir, 'scene.yaml')
     camera_config = os.path.join(config_dir, 'camera.yaml')
-    test_images = os.path.join(
-        os.path.dirname(config_dir), 'data', 'test_images'
-    )
 
-    # Deklaracja argumentów uruchomienia
-    mode_arg = DeclareLaunchArgument(
-        'mode',
-        default_value='demo_mode',
-        description='Tryb pracy: demo_mode (obrazy testowe) lub robot_mode (sprzęt)',
-    )
     marker_type_arg = DeclareLaunchArgument(
         'marker_type',
         default_value='apriltag',
@@ -49,6 +37,12 @@ def generate_launch_description():
         default_value='eth0',
         description='Interfejs sieciowy Ethernet podłączony do robota (np. eth0, enp3s0)',
     )
+
+    require_robot_connection_arg = DeclareLaunchArgument(
+        'require_robot_connection',
+        default_value='false',
+        description='Wymagaj aktywnego połączenia z robotem (true/false).',
+    )
     body_camera_device_arg = DeclareLaunchArgument(
         'body_camera_device',
         default_value='0',
@@ -56,26 +50,22 @@ def generate_launch_description():
     )
     head_camera_device_arg = DeclareLaunchArgument(
         'head_camera_device',
-        default_value='1',
-        description='Indeks urządzenia V4L2 dla kamery głowy (np. 1 dla /dev/video1)',
+        default_value='-1',
+        description='Indeks urządzenia V4L2 dla kamery głowy; -1 wyłącza kamerę głowy i używa obrazu z kamery ciała',
     )
 
-    # Węzeł interfejsu kamery
     camera_interface_node = Node(
         package='robomvp',
         executable='camera_interface',
         name='camera_interface',
         output='screen',
         parameters=[{
-            'mode': LaunchConfiguration('mode'),
-            'test_images_path': test_images,
             'publish_rate': 10.0,
             'body_camera_device': LaunchConfiguration('body_camera_device'),
             'head_camera_device': LaunchConfiguration('head_camera_device'),
         }],
     )
 
-    # Węzeł detekcji markerów
     marker_detection_node = Node(
         package='robomvp',
         executable='marker_detection',
@@ -86,7 +76,6 @@ def generate_launch_description():
         }],
     )
 
-    # Węzeł estymacji pozy markerów
     marker_pose_estimator_node = Node(
         package='robomvp',
         executable='marker_pose_estimator',
@@ -98,7 +87,6 @@ def generate_launch_description():
         }],
     )
 
-    # Główny węzeł sterujący
     robomvp_main_node = Node(
         package='robomvp',
         executable='robomvp_main',
@@ -106,16 +94,16 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'scene_config_path': scene_config,
-            'mode': LaunchConfiguration('mode'),
             'step_period': 1.0,
             'network_interface': LaunchConfiguration('network_interface'),
+            'require_robot_connection': LaunchConfiguration('require_robot_connection'),
         }],
     )
 
     return LaunchDescription([
-        mode_arg,
         marker_type_arg,
         network_interface_arg,
+        require_robot_connection_arg,
         body_camera_device_arg,
         head_camera_device_arg,
         camera_interface_node,

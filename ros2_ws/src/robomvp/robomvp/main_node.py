@@ -48,54 +48,44 @@ from robomvp.unitree_robot_api import UnitreeRobotAPI
 
 
 class RoboMVPMain(Node):
-    """Węzeł główny systemu RoboMVP.
-
-    Koordynuje wszystkie komponenty:
-    - Automat stanowy
-    - Sekwencje ruchów
-    - Komunikacja ROS2
-    """
+    """Węzeł główny systemu RoboMVP."""
 
     def __init__(self):
         super().__init__('robomvp_main')
 
-        # Deklaracja parametrów
         self.declare_parameter('scene_config_path', '')
-        self.declare_parameter('mode', 'demo_mode')
         self.declare_parameter('step_period', 1.0)
         self.declare_parameter('network_interface', 'eth0')
+        self.declare_parameter('require_robot_connection', False)
 
-        scene_config_path = (
-            self.get_parameter('scene_config_path')
-            .get_parameter_value()
-            .string_value
-        )
-        self._mode = self.get_parameter('mode').get_parameter_value().string_value
-        step_period = (
-            self.get_parameter('step_period').get_parameter_value().double_value
-        )
-        network_interface = (
-            self.get_parameter('network_interface').get_parameter_value().string_value
+        scene_config_path = self.get_parameter('scene_config_path').value
+        step_period = float(self.get_parameter('step_period').value)
+        network_interface = str(self.get_parameter('network_interface').value)
+        self._require_robot_connection = bool(
+            self.get_parameter('require_robot_connection').value
         )
 
-        # Wczytanie konfiguracji sceny
         self._config = self._load_config(scene_config_path)
 
-        # Inicjalizacja interfejsu sprzętowego robota (tylko w trybie robot)
-        self._robot_api = None
-        if self._mode == 'robot_mode':
-            self._robot_api = UnitreeRobotAPI(network_interface=network_interface)
-            try:
-                self._robot_api.connect(logger=self.get_logger())
-            except RuntimeError as exc:
+        self._robot_api = UnitreeRobotAPI(network_interface=network_interface)
+        self._robot_connected = False
+        try:
+            self._robot_api.connect(logger=self.get_logger())
+            self._robot_connected = True
+            self.get_logger().info('Połączenie z robotem aktywne - ruch będzie wykonywany na sprzęcie.')
+        except RuntimeError as exc:
+            if self._require_robot_connection:
                 self.get_logger().error(
                     f'Nie można połączyć z robotem: {exc}. '
-                    'Węzeł będzie działał bez sterowania sprzętowego. '
-                    'Uruchom ponownie po poprawieniu połączenia z robotem.'
+                    'Parametr require_robot_connection=True wymaga aktywnego połączenia.'
                 )
-                self._robot_api = None
+                raise
+            self.get_logger().warn(
+                f'Nie można połączyć z robotem: {exc}. '
+                'Kontynuuję bez połączenia sprzętowego (symulacja komend ruchu w logach).'
+            )
+            self._robot_api = None
 
-        # Inicjalizacja komponentów
         offset_scale = self._config.get('offset_scale', {})
         self._scale_dx = float(offset_scale.get('dx', 1.0))
         self._scale_dy = float(offset_scale.get('dy', 1.0))
@@ -106,7 +96,6 @@ class RoboMVPMain(Node):
         self._motion_total_timeout_s = float(motion_timeouts.get('total', 30.0))
         self._motion_step_timeout_s = float(motion_timeouts.get('step', 5.0))
 
-        # Subskrypcje: poza markera i offset korekcji
         self._sub_pose = self.create_subscription(
             MarkerPose, '/robomvp/marker_pose', self._on_marker_pose, 10
         )
@@ -114,25 +103,21 @@ class RoboMVPMain(Node):
             Offset, '/robomvp/offset', self._on_offset, 10
         )
 
-        # Wydawcy: stan automatu i komendy ruchu
         self._pub_state = self.create_publisher(StateMsg, '/robomvp/state', 10)
         self._pub_motion = self.create_publisher(String, '/robomvp/motion_command', 10)
 
-        # Timer kroku automatu stanowego
         self._timer = self.create_timer(step_period, self._step)
-
-        # Aktualny offset korekcji
         self._current_offset = (0.0, 0.0, 0.0)
 
         self.get_logger().info(
-            f'Węzeł główny RoboMVP uruchomiony (tryb: {self._mode}). '
-            'System gotowy do pracy. Oczekiwanie na dane z czujników.'
+            'Węzeł główny RoboMVP uruchomiony. '
+            f'Połączenie z robotem: {"aktywne" if self._robot_connected else "brak"}. '
+            'Oczekiwanie na dane z czujników.'
         )
 
     def _load_config(self, config_path: str) -> dict:
         """Wczytuje konfigurację sceny z pliku YAML."""
         if not config_path:
-            # Szukaj pliku konfiguracji względem repozytorium i typowych ścieżek kontenera
             current = Path(__file__).resolve()
             possible_paths = [
                 *[parent / 'config' / 'scene.yaml' for parent in current.parents],
@@ -178,6 +163,9 @@ class RoboMVPMain(Node):
 
     def _on_marker_pose(self, msg: MarkerPose):
         """Odbiera pozę markera i aktualizuje automat stanowy."""
+        self.get_logger().debug(
+            f'Odebrano marker_pose: id={msg.marker_id}, x={msg.x:.3f}, y={msg.y:.3f}, z={msg.z:.3f}'
+        )
         self._state_machine.update_marker(msg.marker_id, msg.x, msg.y, msg.z)
 
     def _on_offset(self, msg: Offset):
@@ -186,6 +174,9 @@ class RoboMVPMain(Node):
         dy = msg.dy * self._scale_dy
         dz = msg.dz * self._scale_dz
         self._current_offset = (dx, dy, dz)
+        self.get_logger().debug(
+            f'Odebrano offset: dx={dx:.4f}, dy={dy:.4f}, dz={dz:.4f}'
+        )
         self._state_machine.update_offset(dx, dy, dz)
 
     def _step(self):
@@ -193,22 +184,21 @@ class RoboMVPMain(Node):
         previous_state = self._state_machine.current_state
         new_state = self._state_machine.step()
 
-        # Publikuj aktualny stan
         state_msg = StateMsg()
         state_msg.state_name = self._state_machine.current_state_name
         state_msg.state_id = int(new_state)
         self._pub_state.publish(state_msg)
 
-        # Wykonaj akcję jeśli nastąpiło przejście stanu
         if new_state != previous_state:
+            self.get_logger().info(
+                f'Wykryto zmianę stanu: {previous_state.name} -> {new_state.name}. '
+                'Uruchamiam akcję dla nowego stanu.'
+            )
             self._execute_state_action(new_state)
 
-        # Sprawdź zakończenie
         if new_state == State.FINISHED:
             self.get_logger().info(
-                'Scenariusz demonstracyjny zakończony pomyślnie! '
-                'Robot odłożył pudełko na docelowy stół. '
-                'Możesz uruchomić nowy scenariusz lub zatrzymać system.'
+                'Scenariusz zakończony pomyślnie. Zatrzymuję timer automatu.'
             )
             self._timer.cancel()
 
@@ -217,62 +207,49 @@ class RoboMVPMain(Node):
         dx, dy, dz = self._current_offset
 
         if state == State.DETECT_MARKER:
-            self.get_logger().info(
-                'Rozpoczynam podejście do pierwszego stołu. '
-                'Robot wykona sekwencję ruchu do pozycji roboczej.'
-            )
+            self.get_logger().info('Akcja: approach_table (podejście do stołu).')
             self._publish_motion('approach_table')
             sequence = apply_offset_to_sequence(get_approach_table(), dx, dy, dz)
             self._run_sequence(sequence, 'approach_table')
 
         elif state == State.ALIGN_WITH_BOX:
-            self.get_logger().info(
-                'Wyrównuję pozycję z pudełkiem. '
-                'Oczekiwanie na offset korekcji poniżej progu.'
-            )
+            self.get_logger().info('Akcja: align_with_box (wyrównanie do pudełka).')
             self._publish_motion('align_with_box')
 
         elif state == State.PICK_BOX:
-            self.get_logger().info(
-                'Rozpoczynam sekwencję podniesienia pudełka. '
-                'Ramię opuszcza się do pozycji chwytu.'
-            )
+            self.get_logger().info('Akcja: pick_box (podniesienie pudełka).')
             self._publish_motion('pick_box')
             sequence = apply_offset_to_sequence(get_pick_box(), dx, dy, dz)
             self._run_sequence(sequence, 'pick_box')
 
         elif state == State.ROTATE_180:
-            self.get_logger().info(
-                'Obracam robot o 180 stopni. '
-                'Robot zmienia orientację w kierunku docelowego stołu.'
-            )
+            self.get_logger().info('Akcja: rotate_180 (obrót robota).')
             self._publish_motion('rotate_180')
             sequence = get_rotate_180()
             self._run_sequence(sequence, 'rotate_180')
 
         elif state == State.NAVIGATE_TO_TARGET_MARKER:
-            self.get_logger().info(
-                'Nawiguję do drugiego stołu. '
-                'Robot idzie w kierunku markera docelowego.'
-            )
+            self.get_logger().info('Akcja: walk_to_second_table (nawigacja do celu).')
             self._publish_motion('walk_to_second_table')
             sequence = get_walk_to_second_table()
             self._run_sequence(sequence, 'walk_to_second_table')
 
         elif state == State.PLACE_BOX:
-            self.get_logger().info(
-                'Odkładam pudełko na docelowy stół. '
-                'Ramię opuszcza się i zwalnia chwyt.'
-            )
+            self.get_logger().info('Akcja: place_box (odłożenie pudełka).')
             self._publish_motion('place_box')
             sequence = apply_offset_to_sequence(get_place_box(), dx, dy, dz)
             self._run_sequence(sequence, 'place_box')
 
         elif state == State.FINISHED:
+            self.get_logger().info('Akcja: finished (publikacja zakończenia).')
             self._publish_motion('finished')
 
     def _run_sequence(self, sequence: list, sequence_name: str):
         """Uruchamia sekwencję ruchu z timeoutami i obsługą błędów."""
+        self.get_logger().info(
+            f'Start sekwencji: {sequence_name} (kroków: {len(sequence)}). '
+            f'Tryb wykonania: {"robot" if self._robot_api is not None else "bez robota"}.'
+        )
         ok = execute_sequence(
             sequence,
             robot_api=self._robot_api,
@@ -285,6 +262,8 @@ class RoboMVPMain(Node):
                 f'Sekwencja {sequence_name} zakończyła się błędem/timeoutem - zatrzymuję timer'
             )
             self._timer.cancel()
+        else:
+            self.get_logger().info(f'Sekwencja {sequence_name} zakończona sukcesem.')
 
     def _publish_motion(self, command: str):
         """Publikuje komendę ruchu na temat /robomvp/motion_command."""

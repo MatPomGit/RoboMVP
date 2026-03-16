@@ -162,6 +162,7 @@ class StateMachine:
         old_name = STATE_NAMES[self._state]
         new_name = STATE_NAMES[new_state]
         self._state = new_state
+        self._state_enter_time = time.monotonic()
         self._log(f'Zmiana stanu: {old_name} -> {new_name}')
 
     def _is_timeout(self, key: str) -> bool:
@@ -180,6 +181,12 @@ class StateMachine:
                 'Przechodzę do detekcji markera na pudełku.'
             )
             self._transition_to(State.DETECT_MARKER)
+        elif self._is_timeout('search_table'):
+            self._log(
+                'Timeout w stanie SEARCH_TABLE. Wymuszam przejście do DETECT_MARKER '
+                'aby kontynuować scenariusz.'
+            )
+            self._transition_to(State.DETECT_MARKER)
         else:
             expected = self._pickup_table_marker
             current = self._last_marker_id
@@ -195,6 +202,11 @@ class StateMachine:
             self._log(
                 f'Wykryto marker pudełka (ID={self._box_marker_id}). '
                 'Przechodzę do wyrównywania pozycji.'
+            )
+            self._transition_to(State.ALIGN_WITH_BOX)
+        elif self._is_timeout('detect_marker'):
+            self._log(
+                'Timeout w stanie DETECT_MARKER. Wymuszam przejście do ALIGN_WITH_BOX.'
             )
             self._transition_to(State.ALIGN_WITH_BOX)
         else:
@@ -218,6 +230,11 @@ class StateMachine:
                 f'Wyrównanie zakończone (|dx|={abs(dx):.4f}, |dz|={abs(dz):.4f} m, '
                 f'próg={self._align_threshold:.4f} m). '
                 'Przechodzę do podniesienia pudełka.'
+            )
+            self._transition_to(State.PICK_BOX)
+        elif self._is_timeout('align_with_box'):
+            self._log(
+                'Timeout w stanie ALIGN_WITH_BOX. Wymuszam przejście do PICK_BOX.'
             )
             self._transition_to(State.PICK_BOX)
         else:
@@ -257,6 +274,12 @@ class StateMachine:
                     f'Zbliżam się do docelowego stołu: '
                     f'z={z:.3f} m (wymagane < {self._stop_distance:.3f} m).'
                 )
+        elif self._is_timeout('navigate_to_target_marker'):
+            self._log(
+                'Timeout w stanie NAVIGATE_TO_TARGET_MARKER. '
+                'Wymuszam przejście do PLACE_BOX.'
+            )
+            self._transition_to(State.PLACE_BOX)
         else:
             self._log(
                 f'Szukam markera docelowego stołu (ID={self._place_table_marker}). '

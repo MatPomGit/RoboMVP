@@ -125,11 +125,11 @@ def execute_sequence(
     total_timeout_s: float = 30.0,
     step_timeout_s: float = 5.0,
 ) -> bool:
-    """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje w trybie demo.
+    """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje kroki przy pracy bez połączenia z robotem.
 
     Args:
         sequence: Lista poz do wykonania.
-        robot_api: Interfejs API robota Unitree (None w trybie demo).
+        robot_api: Interfejs API robota Unitree (None gdy brak połączenia z robotem).
         logger: Logger ROS2 do wypisywania komunikatów.
         total_timeout_s: Maksymalny czas wykonania całej sekwencji (sekundy).
         step_timeout_s: Maksymalny czas pojedynczego kroku (sekundy).
@@ -164,7 +164,7 @@ def execute_sequence(
         else:
             if logger:
                 logger.info(
-                    f'[demo] Krok {i + 1}/{total}: '
+                    f'[no_robot] Krok {i + 1}/{total}: '
                     f'x={pose.get("x", 0):.2f}, '
                     f'y={pose.get("y", 0):.2f}, '
                     f'z={pose.get("z", 0):.2f}, '

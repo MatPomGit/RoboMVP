@@ -38,8 +38,6 @@ offset_scale:
   dy: 1.0
   dz: 1.0
 
-# Tryb demonstracji (demo_mode / robot_mode)
-mode: demo_mode
 
 # Timeouty stanów automatu (sekundy)
 state_timeouts:
