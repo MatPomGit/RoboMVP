@@ -223,9 +223,13 @@ ros2 topic list
 ```
 RoboMVP/
 ├── README.md
+├── LICENSE
+├── requirements.txt
 ├── config/
 │   ├── scene.yaml          # Konfiguracja sceny i markerów
 │   └── camera.yaml         # Kalibracja kamer
+├── docs/
+│   └── sterowanie_robotem.md  # Dokumentacja techniczna sterowania
 ├── scripts/
 │   └── run_demo.sh         # Skrypt uruchomienia (sprzęt rzeczywisty)
 └── ros2_ws/
@@ -234,6 +238,8 @@ RoboMVP/
             ├── CMakeLists.txt
             ├── package.xml
             ├── setup.py
+            ├── resource/
+            │   └── robomvp
             ├── launch/
             │   └── demo.launch.py
             ├── msg/
@@ -242,6 +248,7 @@ RoboMVP/
             │   ├── Offset.msg
             │   └── State.msg
             └── robomvp/
+                ├── __init__.py
                 ├── camera_interface.py       # Interfejs kamer (demo/sprzęt)
                 ├── marker_detection.py       # Detekcja markerów AprilTag/QR
                 ├── marker_pose_estimator.py  # Estymacja pozy 3D markerów
