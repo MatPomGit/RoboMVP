@@ -301,7 +301,7 @@ class UnitreeRobotAPI:
         """Wysyła komendę prędkości ``LocoClient.SetVelocity`` z zadanym czasem trwania.
 
         SDK Unitree obsługuje parametr ``duration`` po stronie serwera –
-        robot wykonuje ruch przez zadany czas.  Dodatkowo, po upływie czasu
+        robot wykonuje ruch przez zadany czas. Dodatkowo, po upływie czasu
         wywołujemy ``StopMove()`` aby wyzerować prędkość (środek bezpieczeństwa).
 
         Args:

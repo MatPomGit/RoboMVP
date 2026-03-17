@@ -108,7 +108,7 @@ LocoClient.SetVelocity(vx: float, vy: float, omega: float, duration: float = 1.0
 
 SDK obsługuje parametr `duration` po stronie serwera – robot wykonuje ruch przez zadany czas. Dodatkowo `StopMove()` zeruje wszystkie prędkości (środek bezpieczeństwa).
 
-Metoda `Move(vx, vy, vyaw, continous_move=False)` jest wrapperem na `SetVelocity` z `duration=1.0` (lub `864000.0` dla trybu ciągłego).
+Metoda `Move(vx, vy, vyaw, continous_move=False)` jest wrapperem na `SetVelocity` z `duration=1.0` (lub `864000.0` dla trybu ciągłego). Uwaga: w SDK trzeci parametr nosi nazwę `omega`, w kodzie RoboMVP używamy nazwy `vyaw` dla spójności z konwencją waypoints.
 
 ### 1.3 Punkt styku: `unitree_robot_api.py`
 
@@ -315,11 +315,13 @@ arm_client.Init()
 #   'shake hand': 27    – podanie ręki
 #   'high five': 18     – piątka
 #   'hug': 19           – objęcie
-#   'wave hand': ...    – machanie (przez LocoClient.WaveHand())
 #   'clap': 17          – klaskanie
 #   'heart': 20         – serce
 #   'hands up': 15      – ręce do góry
 #   i inne (patrz action_map w g1_arm_action_client.py)
+#
+# Uwaga: machanie ręką realizowane jest przez LocoClient.WaveHand(),
+# nie przez G1ArmActionClient.
 
 arm_client.ExecuteAction(action_map['shake hand'])
 time.sleep(2)
