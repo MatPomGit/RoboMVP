@@ -42,6 +42,7 @@ class UnitreeRobotAPI:
     _YAW_SPEED: float = 0.5      # rad/s – prędkość obrotowa
     _POSITION_TOLERANCE: float = 0.02  # m – tolerancja osiągnięcia pozycji
     _YAW_TOLERANCE: float = 0.05       # rad – tolerancja osiągnięcia orientacji
+    _COMMAND_RATE_HZ: float = 20.0     # Hz – częstotliwość odświeżania Move
     # Ułamki budżetu czasu timeout_s przeznaczone na poszczególne fazy ruchu.
     # Faza obrotu otrzymuje 40%, pozostała część (≤90% reszty) na translację.
     # 10% rezerwy na StopMove i opóźnienia sieci.
@@ -166,9 +167,12 @@ class UnitreeRobotAPI:
         if abs(dyaw) > self._YAW_TOLERANCE:
             rotation_time = abs(dyaw) / self._YAW_SPEED
             allocated_rot = min(rotation_time, timeout_s * self._YAW_TIMEOUT_FRACTION)
-            self._loco_client.Move(0.0, 0.0, math.copysign(self._YAW_SPEED, dyaw))
-            time.sleep(allocated_rot)
-            self._loco_client.StopMove()
+            self._command_velocity_for_duration(
+                vx=0.0,
+                vy=0.0,
+                vyaw=math.copysign(self._YAW_SPEED, dyaw),
+                duration_s=allocated_rot,
+            )
             self._current_yaw = target_yaw
 
         # Faza 2: Translacja do żądanej pozycji
@@ -187,9 +191,12 @@ class UnitreeRobotAPI:
             #   vyaw – prędkość kątowa [rad/s]
             vx = (dy / distance) * self._LINEAR_SPEED
             vy = (dx / distance) * self._LINEAR_SPEED
-            self._loco_client.Move(vx, vy, 0.0)
-            time.sleep(min(move_time, remaining * self._TRANSLATION_TIMEOUT_FRACTION))
-            self._loco_client.StopMove()
+            self._command_velocity_for_duration(
+                vx=vx,
+                vy=vy,
+                vyaw=0.0,
+                duration_s=min(move_time, remaining * self._TRANSLATION_TIMEOUT_FRACTION),
+            )
 
         self._current_x = target_x
         self._current_y = target_y
@@ -210,3 +217,37 @@ class UnitreeRobotAPI:
             getattr(logger, level)(message)
         else:
             print(f'[UnitreeRobotAPI/{level.upper()}] {message}')
+
+    def _command_velocity_for_duration(
+        self,
+        vx: float,
+        vy: float,
+        vyaw: float,
+        duration_s: float,
+    ) -> None:
+        """Wysyła cyklicznie komendę ``LocoClient.Move`` przez zadany czas.
+
+        Oficjalne przykłady SDK od Unitree wysyłają komendy lokomocji w pętli
+        (typowo 20–50 Hz). Dzięki temu robot dostaje regularnie świeże polecenie
+        prędkości zamiast pojedynczego impulsu.
+
+        Args:
+            vx: Prędkość do przodu/tyłu [m/s].
+            vy: Prędkość boczna [m/s].
+            vyaw: Prędkość kątowa [rad/s].
+            duration_s: Czas trwania komendy [s].
+        """
+        if duration_s <= 0.0:
+            return
+
+        period = 1.0 / self._COMMAND_RATE_HZ
+        end_time = time.monotonic() + duration_s
+
+        while True:
+            now = time.monotonic()
+            if now >= end_time:
+                break
+            self._loco_client.Move(vx, vy, vyaw)
+            time.sleep(min(period, end_time - now))
+
+        self._loco_client.StopMove()
