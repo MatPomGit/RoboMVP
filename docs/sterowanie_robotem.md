@@ -84,32 +84,35 @@ Unitree SDK 2 (`unitree_sdk2py`) to warstwa, która bezpośrednio komunikuje si�
 UnitreeRobotAPI.move_to_pose(pose)
       │
       ├─── Faza 1: Obrót
-      │    LocoClient.Move(0.0, 0.0, vyaw)
-      │    time.sleep(allocated_rot)
+      │    LocoClient.SetVelocity(0.0, 0.0, vyaw, duration)
+      │    time.sleep(duration)
       │    LocoClient.StopMove()
       │
       └─── Faza 2: Translacja
            vx = (dy / dist) * LINEAR_SPEED  # ruch do przodu [m/s]
            vy = (dx / dist) * LINEAR_SPEED  # ruch boczny [m/s]
-           LocoClient.Move(vx, vy, 0.0)
-           time.sleep(move_time)
+           LocoClient.SetVelocity(vx, vy, 0.0, duration)
+           time.sleep(duration)
            LocoClient.StopMove()
 ```
 
-Sygnatura `LocoClient.Move` wygląda następująco:
+Sygnatura `LocoClient.SetVelocity` wygląda następująco:
 
 ```python
-LocoClient.Move(vx: float, vy: float, vyaw: float)
-# vx   – prędkość do przodu / tyłu [m/s]   (+ = przód)
-# vy   – prędkość boczna [m/s]              (+ = lewo)
-# vyaw – prędkość kątowa [rad/s]            (+ = obrót w lewo)
+LocoClient.SetVelocity(vx: float, vy: float, omega: float, duration: float = 1.0)
+# vx       – prędkość do przodu / tyłu [m/s]   (+ = przód)
+# vy       – prędkość boczna [m/s]              (+ = lewo)
+# omega    – prędkość kątowa [rad/s]            (+ = obrót w lewo)
+# duration – czas trwania komendy [s]           (obsługiwany po stronie serwera)
 ```
 
-Komenda jest wysyłana **w sposób ciągły** (co kilka ms robot ją odświeża). Wywołanie `StopMove()` zeruje wszystkie prędkości.
+SDK obsługuje parametr `duration` po stronie serwera – robot wykonuje ruch przez zadany czas. Dodatkowo `StopMove()` zeruje wszystkie prędkości (środek bezpieczeństwa).
+
+Metoda `Move(vx, vy, vyaw, continous_move=False)` jest wrapperem na `SetVelocity` z `duration=1.0` (lub `864000.0` dla trybu ciągłego). Uwaga: w SDK trzeci parametr nosi nazwę `omega`, w kodzie RoboMVP używamy nazwy `vyaw` dla spójności z konwencją waypoints.
 
 ### 1.3 Punkt styku: `unitree_robot_api.py`
 
-Plik `ros2_ws/src/robomvp/robomvp/unitree_robot_api.py` jest **jedynym miejscem**, w którym logika ROS2 (automat stanowy, sekwencje ruchów) styka się z Unitree SDK 2. Główny węzeł `robomvp_main` wywołuje `robot_api.move_to_pose(pose)`, a ta metoda korzysta już wyłącznie z `LocoClient` – bez ROS2.
+Plik `ros2_ws/src/robomvp/robomvp/unitree_robot_api.py` jest **jedynym miejscem**, w którym logika ROS2 (automat stanowy, sekwencje ruchów) styka się z Unitree SDK 2. Główny węzeł `robomvp_main` wywołuje `robot_api.move_to_pose(pose)`, a ta metoda korzysta z `LocoClient.SetVelocity()` (lokomocja) i `G1ArmActionClient.ExecuteAction()` (ramiona) – bez ROS2.
 
 ```
 Warstwa ROS2           │   Warstwa SDK
@@ -121,8 +124,9 @@ motion_sequences       │
    ↓                   │
 main_node              │
    ↓                   │
-UnitreeRobotAPI ───────┼──→ LocoClient.Move()
-   move_to_pose()      │          ↓
+UnitreeRobotAPI ───────┼──→ LocoClient.SetVelocity()
+   move_to_pose()      │    G1ArmActionClient.ExecuteAction()
+   execute_arm_action() │          ↓
                        │    Robot (DDS/Ethernet)
 ```
 
@@ -179,24 +183,38 @@ loco_client.Move(vx=0.3, vy=0.0, vyaw=0.0)  # idź do przodu 0.3 m/s
 
 Robot samodzielnie przeliczy to na trajektorie wszystkich kończyn dolnych.
 
-**Sport Mode jest jedynym trybem używanym w RoboMVP** – cały plik `unitree_robot_api.py` opiera się na `LocoClient`, który jest interfejsem do Sport Mode.
+**Sport Mode jest jedynym trybem lokomocji używanym w RoboMVP** – plik `unitree_robot_api.py` opiera się na `LocoClient` (interfejs do Sport Mode) oraz `G1ArmActionClient` (predefiniowane akcje ramion).
 
-**Dostępne komendy LocoClient (Sport Mode):**
+**Dostępne komendy LocoClient (Sport Mode) – rzeczywiste funkcje z SDK:**
 
 ```python
-# Ruch
-loco_client.Move(vx, vy, vyaw)  # prędkości liniowe i kątowa
-loco_client.StopMove()           # natychmiastowe zatrzymanie
+# Ruch z parametrem czasu trwania (SetVelocity)
+loco_client.SetVelocity(vx, vy, omega, duration=1.0)  # komenda prędkości z czasem trwania [s]
+loco_client.Move(vx, vy, vyaw, continous_move=False)   # wrapper: duration=1s lub 864000s
+loco_client.StopMove()                                  # zerowanie prędkości (SetVelocity(0,0,0))
 
-# Pozy statyczne
-loco_client.StandUp()            # wstanie z pozycji siedzącej
-loco_client.StandDown()          # usiadanie
-loco_client.ZeroTorque()         # rozluźnienie stawów (ostrożnie!)
-loco_client.Damp()               # tryb tłumiony – soft stop
+# Zmiana trybu FSM (Finite State Machine)
+loco_client.Start()              # wejście w tryb chodzenia (FSM ID = 200)
+loco_client.Damp()               # tryb tłumiony – bezpieczne zatrzymanie (FSM ID = 1)
+loco_client.Sit()                # siadanie (FSM ID = 3)
+loco_client.ZeroTorque()         # rozluźnienie stawów (FSM ID = 0, ostrożnie!)
+loco_client.Squat2StandUp()      # wstanie z przysiadu (FSM ID = 706)
+loco_client.Lie2StandUp()        # wstanie z pozycji leżącej (FSM ID = 702)
 
-# Gesty / ruchy specjalne
-loco_client.WaveHand()           # machanie ręką (wbudowane)
-loco_client.Dance1()             # wbudowany taniec (jeśli dostępny)
+# Wysokość postawy
+loco_client.HighStand()          # wysoka postawa
+loco_client.LowStand()           # niska postawa
+loco_client.SetStandHeight(h)    # ustawienie konkretnej wysokości
+
+# Gesty / ruchy specjalne (przez SetTaskId)
+loco_client.WaveHand()           # machanie ręką
+loco_client.WaveHand(True)       # machanie ręką z obrotem
+loco_client.ShakeHand()          # podanie ręki
+
+# Ustawienia lokomocji
+loco_client.SetSwingHeight(h)    # wysokość unoszenia stóp
+loco_client.SetBalanceMode(m)    # tryb balansu
+loco_client.SetFsmId(id)         # bezpośrednie ustawienie trybu FSM
 ```
 
 ### 3.3 Jak włączyć Sport Mode
@@ -210,14 +228,16 @@ from unitree_sdk2py.g1.loco.g1_loco_client import LocoClient
 # 1. Inicjalizacja transportu DDS (raz na proces)
 ChannelFactoryInitialize(0, 'eth0')   # '0' = pierwsza karta, 'eth0' = interfejs
 
-# 2. Utworzenie klienta lokomocji (= wejście w Sport Mode)
+# 2. Utworzenie klienta lokomocji
 loco_client = LocoClient()
 loco_client.SetTimeout(10.0)   # timeout odpowiedzi od robota [s]
-loco_client.Init()              # nawiązanie połączenia
+loco_client.Init()              # rejestracja API w kliencie RPC
 
-# 3. Robot jest teraz w Sport Mode – można wydawać komendy
-loco_client.StandUp()
-loco_client.Move(0.3, 0.0, 0.0)
+# 3. Przełączenie w tryb chodzenia (FSM ID = 200)
+loco_client.Start()
+
+# 4. Robot jest teraz w Sport Mode – można wydawać komendy
+loco_client.SetVelocity(0.3, 0.0, 0.0, 3.0)  # idź do przodu 0.3 m/s przez 3s
 ```
 
 **Ważne**: `ChannelFactoryInitialize` należy wywołać **dokładnie raz** na cały proces (nie per-wątek, nie per-węzeł). Wielokrotne wywołanie spowoduje błąd inicjalizacji DDS.
@@ -260,26 +280,57 @@ Kluczowe zasady:
 
 ### 4.2 Dolna część ciała: LocoClient (nogi)
 
-Sterowanie nogami realizuje się w pętli wysyłającej komendy prędkości:
+Sterowanie nogami realizuje się przez `SetVelocity()` z parametrem `duration`:
 
 ```python
-import threading
 import time
 from unitree_sdk2py.g1.loco.g1_loco_client import LocoClient
 
-def locomotion_loop(loco_client: LocoClient, target_vx: float, stop_event: threading.Event):
-    """Pętla sterowania lokomocją – wysyła komendy prędkości co 50 ms."""
-    while not stop_event.is_set():
-        loco_client.Move(target_vx, 0.0, 0.0)
-        time.sleep(0.05)   # 20 Hz
+def walk_forward(loco_client: LocoClient, speed: float, duration: float):
+    """Idzie do przodu z zadaną prędkością przez zadany czas."""
+    loco_client.SetVelocity(speed, 0.0, 0.0, duration)
+    time.sleep(duration)
     loco_client.StopMove()
 ```
 
-Pętla musi być **aktywna** (wysyłać komendy cyklicznie), bo robot po braku świeżej komendy automatycznie zwalnia. Częstotliwość 20 Hz jest wystarczająca dla Sport Mode.
+SDK obsługuje `duration` po stronie serwera – robot wykonuje ruch przez zadany czas bez konieczności wysyłania poleceń w pętli. Wywołanie `StopMove()` po zakończeniu ruchu jest dodatkowym środkiem bezpieczeństwa.
 
-### 4.3 Górna część ciała: ArmSDK (ramiona)
+### 4.3 Górna część ciała: ramiona
 
-Unitree SDK 2 udostępnia interfejs do sterowania stawami ramion przez `ArmWriter` lub dedykowany klient:
+Unitree SDK 2 udostępnia dwa interfejsy do sterowania ramionami:
+
+#### 4.3.1 Predefiniowane akcje – G1ArmActionClient (wysoki poziom)
+
+`G1ArmActionClient` umożliwia wykonywanie gotowych gestów ramion:
+
+```python
+from unitree_sdk2py.g1.arm.g1_arm_action_client import G1ArmActionClient, action_map
+
+arm_client = G1ArmActionClient()
+arm_client.SetTimeout(10.0)
+arm_client.Init()
+
+# Dostępne akcje (action_map):
+#   'release arm': 99   – zwolnienie ramion
+#   'shake hand': 27    – podanie ręki
+#   'high five': 18     – piątka
+#   'hug': 19           – objęcie
+#   'clap': 17          – klaskanie
+#   'heart': 20         – serce
+#   'hands up': 15      – ręce do góry
+#   i inne (patrz action_map w g1_arm_action_client.py)
+#
+# Uwaga: machanie ręką realizowane jest przez LocoClient.WaveHand(),
+# nie przez G1ArmActionClient.
+
+arm_client.ExecuteAction(action_map['shake hand'])
+time.sleep(2)
+arm_client.ExecuteAction(action_map['release arm'])
+```
+
+#### 4.3.2 Bezpośrednie sterowanie stawami – ArmSDK DDS (niski poziom)
+
+Do precyzyjnego sterowania pozycjami stawów służy niskopoziomowe API przez kanały DDS:
 
 ```python
 import threading
@@ -343,7 +394,7 @@ import threading
 import time
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.g1.loco.g1_loco_client import LocoClient
-from unitree_sdk2py.g1.arm.g1_arm_sdk import ArmWriter  # import zależny od wersji SDK – sprawdź dokumentację
+from unitree_sdk2py.g1.arm.g1_arm_action_client import G1ArmActionClient, action_map
 
 
 def walk_while_holding_box(
@@ -362,122 +413,89 @@ def walk_while_holding_box(
     loco = LocoClient()
     loco.SetTimeout(10.0)
     loco.Init()
-    loco.StandUp()
-    time.sleep(1.0)   # czas na ustabilizowanie postawy
+    loco.Start()           # wejście w tryb chodzenia (FSM ID = 200)
+    time.sleep(1.0)        # czas na ustabilizowanie postawy
 
-    # 3. Interfejs ramion
-    arm = ArmWriter()
+    # 3. Klient akcji ramion
+    arm = G1ArmActionClient()
+    arm.SetTimeout(10.0)
     arm.Init()
 
-    stop_event = threading.Event()
+    # 4. Ramiona w pozycji trzymania (predefiniowana akcja)
+    arm.ExecuteAction(action_map['hug'])
 
-    # 4. Wątek lokomocji (nogi idą do przodu)
-    def loco_thread():
-        while not stop_event.is_set():
-            loco.Move(walk_speed, 0.0, 0.0)
-            time.sleep(0.05)
-        loco.StopMove()
-
-    # 5. Wątek ramion (trzymają pudełko)
-    hold_angles = {
-        15: 0.0, 16: 0.5, 17: -0.3, 18: 0.0, 19: 0.2, 20: 0.0,  # lewe ramię
-        21: 0.0, 22: 0.5, 23:  0.3, 24: 0.0, 25: 0.2, 26: 0.0,  # prawe ramię
-    }
-
-    def arm_thread():
-        while not stop_event.is_set():
-            arm.set_joint_positions(hold_angles)
-            time.sleep(0.02)
-
-    # 6. Uruchomienie wątków
-    t_loco = threading.Thread(target=loco_thread, daemon=True)
-    t_arm  = threading.Thread(target=arm_thread,  daemon=True)
-    t_loco.start()
-    t_arm.start()
-
-    # 7. Czekamy przez zadany czas
+    # 5. Ruch do przodu z zadanym czasem trwania (SetVelocity z duration)
+    loco.SetVelocity(walk_speed, 0.0, 0.0, walk_duration)
     time.sleep(walk_duration)
+    loco.StopMove()
 
-    # 8. Zatrzymanie obu wątków
-    stop_event.set()
-    t_loco.join(timeout=2.0)
-    t_arm.join(timeout=2.0)
+    # 6. Zwolnienie ramion
+    arm.ExecuteAction(action_map['release arm'])
 
     print('Robot dotarł do celu i zatrzymał się.')
 ```
 
 ### 4.5 Przykład: robot idzie i macha ręką
 
-Gdy zamiast trzymać pudełko robot ma machać ręką, wystarczy zmienić wątek ramion na animację:
+Gdy robot ma machać ręką podczas chodzenia, można użyć wbudowanej funkcji `WaveHand()`:
 
 ```python
-import math
+import time
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from unitree_sdk2py.g1.loco.g1_loco_client import LocoClient
 
-def arm_wave_thread(arm_writer, stop_event: threading.Event, freq_hz: float = 0.5):
-    """Macha prawą ręką w górę i w dół z zadaną częstotliwością."""
-    t = 0.0
-    dt = 0.02   # 50 Hz
+ChannelFactoryInitialize(0, 'eth0')
+loco = LocoClient()
+loco.SetTimeout(10.0)
+loco.Init()
+loco.Start()
 
-    # Kąty bazowe (prawa ręka opuszczona wzdłuż ciała)
-    base_angles = {
-        21: 0.0,   # prawy bark – obrót
-        22: 0.0,   # prawy bark – przód/tył
-        23: 0.0,   # prawy łokieć
-        24: 0.0,   # prawy nadgarstek yaw
-        25: 0.0,   # prawy nadgarstek pitch
-        26: 0.0,   # prawy nadgarstek roll
-    }
+# Machanie ręką (wbudowana akcja LocoClient)
+loco.WaveHand()           # machanie bez obrotu
+# loco.WaveHand(True)     # machanie z obrotem
 
-    while not stop_event.is_set():
-        wave_angles = dict(base_angles)
-        # Sinusoidalne machanie barkiem (staw 22: przód/tył)
-        wave_angles[22] = 0.6 * math.sin(2 * math.pi * freq_hz * t)
-        arm_writer.set_joint_positions(wave_angles)
-        t += dt
-        time.sleep(dt)
+# Jednocześnie ruch do przodu
+loco.SetVelocity(0.3, 0.0, 0.0, 5.0)
+time.sleep(5.0)
+loco.StopMove()
 ```
+
+Dla bardziej zaawansowanych animacji ramion (np. sinusoidalne machanie) należy użyć niskopoziomowego API ramion (arm_sdk DDS) z kanałem `rt/arm_sdk`.
 
 ### 4.6 Integracja z RoboMVP
 
-Obecna implementacja RoboMVP używa wyłącznie `LocoClient` (Sport Mode) i nie steruje ramionami przez SDK – pole `z` w słownikach pozycji (`motion_sequences.py`) jest zarezerwowane na przyszłą integrację z `ArmSDK`.
+Obecna implementacja RoboMVP używa `LocoClient.SetVelocity()` do lokomocji oraz `G1ArmActionClient.ExecuteAction()` do sterowania ramionami (predefiniowane gesty). Pole `z` w słownikach pozycji (`motion_sequences.py`) jest przeznaczone do sterowania ramionami – w przyszłości może być zrealizowane przez niskopoziomowe API ramion (arm_sdk DDS) dla precyzyjnej kontroli pozycji stawów.
 
-Aby dodać niezależne sterowanie ramionami do RoboMVP, należy:
+Dostępne metody `UnitreeRobotAPI`:
 
-1. **Rozszerzyć `UnitreeRobotAPI`** o wątek ramion:
+```python
+# Lokomocja (LocoClient)
+robot_api.move_to_pose({'x': 0.0, 'y': 0.5, 'z': 0.0, 'yaw': 0.0})
+
+# Predefiniowane akcje ramion (G1ArmActionClient)
+robot_api.execute_arm_action('shake hand')
+robot_api.execute_arm_action('release arm')
+```
+
+Aby dodać niskopoziomowe sterowanie ramionami do RoboMVP (np. dla precyzyjnego chwytu), należy:
+
+1. **Rozszerzyć `UnitreeRobotAPI`** o komunikację DDS z kanałem `rt/arm_sdk`:
 
 ```python
 # W pliku unitree_robot_api.py
-
-import threading
-from unitree_sdk2py.g1.arm.g1_arm_sdk import ArmWriter
+from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber
+from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_
+from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_, LowState_
 
 class UnitreeRobotAPI:
     def connect(self, logger=None) -> None:
-        # ... istniejący kod LocoClient ...
+        # ... istniejący kod LocoClient + G1ArmActionClient ...
 
-        # Inicjalizacja interfejsu ramion
-        self._arm_writer = ArmWriter()
-        self._arm_writer.Init()
-        self._arm_stop_event = threading.Event()
-        self._arm_thread = None
-
-    def start_arm_hold(self, joint_angles: dict) -> None:
-        """Uruchamia wątek trzymający ramiona w zadanej pozycji."""
-        self._arm_stop_event.clear()
-
-        def _loop():
-            while not self._arm_stop_event.is_set():
-                self._arm_writer.set_joint_positions(joint_angles)
-                time.sleep(0.02)
-
-        self._arm_thread = threading.Thread(target=_loop, daemon=True)
-        self._arm_thread.start()
-
-    def stop_arm_hold(self) -> None:
-        """Zatrzymuje wątek sterowania ramionami."""
-        self._arm_stop_event.set()
-        if self._arm_thread is not None:
-            self._arm_thread.join(timeout=1.0)
+        # Inicjalizacja niskopoziomowego sterowania ramionami (opcjonalnie)
+        self._arm_publisher = ChannelPublisher('rt/arm_sdk', LowCmd_)
+        self._arm_publisher.Init()
+        self._arm_subscriber = ChannelSubscriber('rt/lowstate', LowState_)
+        self._arm_subscriber.Init(self._on_low_state, 10)
 ```
 
 2. **W `motion_sequences.py`** przekazać kąty stawów jako opcjonalne pole `arm_pose` w słowniku waypoint:
@@ -487,7 +505,7 @@ class UnitreeRobotAPI:
  'arm_pose': {15: 0.0, 16: 0.5, ..., 26: 0.0}}
 ```
 
-3. **W `execute_sequence()`** wywołać `robot_api.start_arm_hold(pose['arm_pose'])` przed ruchem i `stop_arm_hold()` po dotarciu do celu lub przy zmianie pozy ramion.
+3. **W `execute_sequence()`** wywołać odpowiednie akcje ramion przy zmianie pozy.
 
 ---
 
@@ -513,10 +531,10 @@ class UnitreeRobotAPI:
 │             │                              │                        │
 │             ▼                              ▼                        │
 │  ┌──────────────────┐         ┌───────────────────────┐             │
-│  │   LocoClient     │         │   ArmSDK / ArmWriter  │             │
-│  │  (Sport Mode)    │         │   (wątek ramion)      │             │
-│  │  Wątek lokomocji │         │   (opcjonalne –       │             │
-│  │                  │         │    rozszerzenie MVP)   │             │
+│  │   LocoClient     │         │  G1ArmActionClient    │             │
+│  │  (Sport Mode)    │         │  (predefiniowane      │             │
+│  │  SetVelocity()   │         │   akcje ramion)       │             │
+│  │  Start() / Damp()│         │  ExecuteAction()      │             │
 │  └─────────┬────────┘         └──────────┬────────────┘             │
 └────────────┼─────────────────────────────┼─────────────────────────┘
              │                             │
@@ -533,8 +551,9 @@ class UnitreeRobotAPI:
 
 | Pytanie | Odpowiedź |
 |---|---|
-| Jak SDK wysyła komendy? | Przez `LocoClient.Move(vx, vy, vyaw)` po DDS/Ethernet |
+| Jak SDK wysyła komendy ruchu? | Przez `LocoClient.SetVelocity(vx, vy, vyaw, duration)` po DDS/Ethernet |
+| Jak SDK steruje ramionami? | Przez `G1ArmActionClient.ExecuteAction(action_id)` (predefiniowane gesty) |
 | Jak ROS2 wysyła komendy? | ROS2 NIE wysyła komendy do sprzętu – koordynuje logikę i percepcję |
 | Czy SDK i ROS2 się gryzą? | Nie, o ile tylko jeden klient wysyła komendy przez `LocoClient` |
 | Czym jest Sport Mode? | Trybem wysokopoziomowym – programista podaje prędkości, robot sam chodzi |
-| Jak sterować osobno górą i dołem? | Wątek 1: `LocoClient.Move()` (nogi); Wątek 2: `ArmSDK` (ramiona) |
+| Jak sterować osobno górą i dołem? | `LocoClient.SetVelocity()` (nogi) + `G1ArmActionClient` (ramiona) |
