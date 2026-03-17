@@ -4,6 +4,7 @@
 Zapewnia integrację z Unitree SDK 2 (``unitree_sdk2py``):
 - inicjalizację połączenia DDS (``ChannelFactoryInitialize``)
 - sterowanie lokomocją przez ``LocoClient`` (chodzenie, obroty)
+- sterowanie ramionami przez ``G1ArmActionClient`` (predefiniowane gesty)
 
 Klasa ``UnitreeRobotAPI`` jest używana wyłącznie w trybie ``robot_mode``.
 W trybie ``demo_mode`` przekazuje się ``None`` jako ``robot_api``
@@ -16,6 +17,7 @@ Przykład użycia:
     api = UnitreeRobotAPI(network_interface='eth0')
     api.connect()
     api.move_to_pose({'x': 0.0, 'y': 0.5, 'z': 0.0, 'yaw': 0.0})
+    api.execute_arm_action('wave hand')
     api.disconnect()
 """
 
@@ -27,8 +29,9 @@ class UnitreeRobotAPI:
     """Interfejs sprzętowy dla robota Unitree G1 EDU.
 
     Zarządza połączeniem z robotem przez Unitree SDK 2 i udostępnia
-    metody do sterowania lokomocją.  Realizuje sterowanie oparte na
-    komendach prędkości (Move/StopMove) LocoClient.
+    metody do sterowania lokomocją i ramionami.  Realizuje sterowanie oparte na:
+    - komendach prędkości ``LocoClient.SetVelocity()`` z parametrem ``duration``
+    - predefiniowanych akcjach ramion ``G1ArmActionClient.ExecuteAction()``
 
     Konwencja osi waypoints:
         x  – ruch boczny (metry, dodatni = lewo)
@@ -42,7 +45,6 @@ class UnitreeRobotAPI:
     _YAW_SPEED: float = 0.5      # rad/s – prędkość obrotowa
     _POSITION_TOLERANCE: float = 0.02  # m – tolerancja osiągnięcia pozycji
     _YAW_TOLERANCE: float = 0.05       # rad – tolerancja osiągnięcia orientacji
-    _COMMAND_RATE_HZ: float = 20.0     # Hz – częstotliwość odświeżania Move
     # Ułamki budżetu czasu timeout_s przeznaczone na poszczególne fazy ruchu.
     # Faza obrotu otrzymuje 40%, pozostała część (≤90% reszty) na translację.
     # 10% rezerwy na StopMove i opóźnienia sieci.
@@ -58,6 +60,7 @@ class UnitreeRobotAPI:
         """
         self._network_interface = network_interface
         self._loco_client = None
+        self._arm_action_client = None
         self._sdk_available = False
 
         # Śledzona aktualna poza robota (aktualizowana po każdym ruchu)
@@ -72,7 +75,9 @@ class UnitreeRobotAPI:
     def connect(self, logger=None) -> None:
         """Nawiązuje połączenie z robotem przez Unitree SDK.
 
-        Inicjalizuje transport DDS i klienta lokomocji LocoClient.
+        Inicjalizuje transport DDS, klienta lokomocji LocoClient
+        oraz klienta akcji ramion G1ArmActionClient.
+        Po inicjalizacji przełącza robota w tryb chodzenia (Start).
 
         Args:
             logger: Logger ROS2 (opcjonalny).  Jeśli podany, komunikaty
@@ -85,6 +90,7 @@ class UnitreeRobotAPI:
         try:
             from unitree_sdk2py.core.channel import ChannelFactoryInitialize  # noqa: PLC0415
             from unitree_sdk2py.g1.loco.g1_loco_client import LocoClient      # noqa: PLC0415
+            from unitree_sdk2py.g1.arm.g1_arm_action_client import G1ArmActionClient  # noqa: PLC0415
         except ImportError as exc:
             msg = (
                 f'Brak modułu Unitree SDK: {exc}. '
@@ -99,11 +105,19 @@ class UnitreeRobotAPI:
             self._loco_client = LocoClient()
             self._loco_client.SetTimeout(10.0)
             self._loco_client.Init()
+
+            self._arm_action_client = G1ArmActionClient()
+            self._arm_action_client.SetTimeout(10.0)
+            self._arm_action_client.Init()
+
+            # Przełącz robota w tryb chodzenia (FSM ID = 200)
+            self._loco_client.Start()
             self._sdk_available = True
             self._log(
                 logger,
                 'info',
-                f'Połączono z robotem przez interfejs sieciowy: {self._network_interface}.',
+                f'Połączono z robotem przez interfejs sieciowy: {self._network_interface}. '
+                'Robot w trybie chodzenia (Start).',
             )
         except Exception as exc:
             msg = (
@@ -116,6 +130,8 @@ class UnitreeRobotAPI:
     def disconnect(self) -> None:
         """Rozłącza połączenie i zatrzymuje robota.
 
+        Najpierw zatrzymuje ruch (StopMove), potem przełącza robota
+        w tryb tłumienia (Damp) i zwalnia ramiona (release arm).
         Bezpieczna do wywołania nawet gdy robot nie jest połączony.
         """
         if self._loco_client is not None:
@@ -123,7 +139,22 @@ class UnitreeRobotAPI:
                 self._loco_client.StopMove()
             except Exception:
                 pass
+            try:
+                self._loco_client.Damp()
+            except Exception:
+                pass
             self._loco_client = None
+
+        if self._arm_action_client is not None:
+            try:
+                from unitree_sdk2py.g1.arm.g1_arm_action_client import action_map  # noqa: PLC0415
+                release_id = action_map.get('release arm')
+                if release_id is not None:
+                    self._arm_action_client.ExecuteAction(release_id)
+            except Exception:
+                pass
+            self._arm_action_client = None
+
         self._sdk_available = False
 
     def move_to_pose(self, pose: dict, timeout_s: float = 5.0) -> None:
@@ -133,11 +164,14 @@ class UnitreeRobotAPI:
         1. Obrót w miejscu do żądanej orientacji (yaw).
         2. Translacja do żądanej pozycji (x, y).
 
-        Czas przeznaczony na każdą fazę jest proporcjonalny do odległości /
-        kąta, lecz nie przekracza odpowiedniego ułamka ``timeout_s``.
+        Komendy prędkości są wysyłane przez ``LocoClient.SetVelocity()``
+        z parametrem ``duration`` odpowiadającym czasowi trwania ruchu.
+        SDK obsługuje czas trwania po stronie serwera – robot wykonuje
+        ruch przez zadany czas bez konieczności wysyłania poleceń w pętli.
 
-        Komponent ``z`` (wysokość ramienia) nie jest obsługiwany przez ten
-        moduł – należy go zrealizować przez dedykowany klient API ramienia.
+        Komponent ``z`` (wysokość ramienia) nie jest obsługiwany przez
+        lokomocję – należy go zrealizować przez ``execute_arm_action()``
+        lub niskopoziomowe API ramienia SDK (arm_sdk DDS).
 
         Args:
             pose: Słownik z kluczami 'x', 'y', 'z', 'yaw'.
@@ -167,7 +201,7 @@ class UnitreeRobotAPI:
         if abs(dyaw) > self._YAW_TOLERANCE:
             rotation_time = abs(dyaw) / self._YAW_SPEED
             allocated_rot = min(rotation_time, timeout_s * self._YAW_TIMEOUT_FRACTION)
-            self._command_velocity_for_duration(
+            self._send_velocity(
                 vx=0.0,
                 vy=0.0,
                 vyaw=math.copysign(self._YAW_SPEED, dyaw),
@@ -185,13 +219,13 @@ class UnitreeRobotAPI:
             remaining = max(0.0, timeout_s - elapsed)
             move_time = distance / self._LINEAR_SPEED
             # Mapowanie: y → vx (przód/tył), x → vy (bok)
-            # Unitree LocoClient.Move(vx, vy, vyaw):
+            # Unitree LocoClient.SetVelocity(vx, vy, vyaw, duration):
             #   vx – prędkość do przodu [m/s]
             #   vy – prędkość boczna [m/s] (+ = lewo)
             #   vyaw – prędkość kątowa [rad/s]
             vx = (dy / distance) * self._LINEAR_SPEED
             vy = (dx / distance) * self._LINEAR_SPEED
-            self._command_velocity_for_duration(
+            self._send_velocity(
                 vx=vx,
                 vy=vy,
                 vyaw=0.0,
@@ -200,6 +234,45 @@ class UnitreeRobotAPI:
 
         self._current_x = target_x
         self._current_y = target_y
+
+    def execute_arm_action(self, action_name: str) -> int:
+        """Wykonuje predefiniowaną akcję ramion robota.
+
+        Dostępne akcje (z ``G1ArmActionClient.action_map``):
+            'release arm', 'two-hand kiss', 'left kiss', 'right kiss',
+            'hands up', 'clap', 'high five', 'hug', 'heart',
+            'right heart', 'reject', 'right hand up', 'x-ray',
+            'face wave', 'high wave', 'shake hand'
+
+        Args:
+            action_name: Nazwa akcji do wykonania.
+
+        Returns:
+            Kod błędu z SDK (0 = sukces).
+
+        Raises:
+            RuntimeError: Jeśli SDK nie jest zainicjalizowane.
+            ValueError: Jeśli nazwa akcji nie jest rozpoznana.
+        """
+        if not self._sdk_available or self._arm_action_client is None:
+            raise RuntimeError(
+                'SDK Unitree nie jest zainicjalizowane. '
+                'Wywołaj connect() przed execute_arm_action().'
+            )
+
+        try:
+            from unitree_sdk2py.g1.arm.g1_arm_action_client import action_map  # noqa: PLC0415
+        except ImportError as exc:
+            raise RuntimeError(f'Brak modułu arm_action_client: {exc}') from exc
+
+        action_id = action_map.get(action_name)
+        if action_id is None:
+            raise ValueError(
+                f'Nieznana akcja ramion: {action_name!r}. '
+                f'Dostępne akcje: {list(action_map.keys())}'
+            )
+
+        return self._arm_action_client.ExecuteAction(action_id)
 
     @property
     def is_connected(self) -> bool:
@@ -218,18 +291,18 @@ class UnitreeRobotAPI:
         else:
             print(f'[UnitreeRobotAPI/{level.upper()}] {message}')
 
-    def _command_velocity_for_duration(
+    def _send_velocity(
         self,
         vx: float,
         vy: float,
         vyaw: float,
         duration_s: float,
     ) -> None:
-        """Wysyła cyklicznie komendę ``LocoClient.Move`` przez zadany czas.
+        """Wysyła komendę prędkości ``LocoClient.SetVelocity`` z zadanym czasem trwania.
 
-        Oficjalne przykłady SDK od Unitree wysyłają komendy lokomocji w pętli
-        (typowo 20–50 Hz). Dzięki temu robot dostaje regularnie świeże polecenie
-        prędkości zamiast pojedynczego impulsu.
+        SDK Unitree obsługuje parametr ``duration`` po stronie serwera –
+        robot wykonuje ruch przez zadany czas.  Dodatkowo, po upływie czasu
+        wywołujemy ``StopMove()`` aby wyzerować prędkość (środek bezpieczeństwa).
 
         Args:
             vx: Prędkość do przodu/tyłu [m/s].
@@ -240,14 +313,6 @@ class UnitreeRobotAPI:
         if duration_s <= 0.0:
             return
 
-        period = 1.0 / self._COMMAND_RATE_HZ
-        end_time = time.monotonic() + duration_s
-
-        while True:
-            now = time.monotonic()
-            if now >= end_time:
-                break
-            self._loco_client.Move(vx, vy, vyaw)
-            time.sleep(min(period, end_time - now))
-
+        self._loco_client.SetVelocity(vx, vy, vyaw, duration_s)
+        time.sleep(duration_s)
         self._loco_client.StopMove()
