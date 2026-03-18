@@ -78,7 +78,7 @@ class MarkerPoseEstimatorNode(Node):
         default_dist = np.zeros((5, 1), dtype=np.float64)
 
         if not config_path:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 'Brak ścieżki do konfiguracji kamery – używam domyślnych parametrów. '
                 'Podaj ścieżkę przez parametr: --ros-args -p camera_config_path:=<ścieżka>'
             )
@@ -106,7 +106,7 @@ class MarkerPoseEstimatorNode(Node):
                 self._marker_size = float(cfg['marker_size'])
             return matrix, dist
         except Exception as e:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f'Błąd wczytywania konfiguracji kamery: {e}. '
                 'Sprawdź format pliku camera.yaml i wartości parametrów. '
                 'Używam domyślnych parametrów kalibracji.'

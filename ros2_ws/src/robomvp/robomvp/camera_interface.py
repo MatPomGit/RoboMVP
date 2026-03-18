@@ -22,11 +22,6 @@ Parametry ROS2:
     head_camera_device – indeks urządzenia V4L2 kamery głowy, domyślnie 1
 """
 
-Węzeł otwiera kamery sprzętowe przez OpenCV VideoCapture korzystając
-z konfigurowalnych indeksów urządzeń V4L2 (body_camera_device,
-head_camera_device). Dla jednej kamery ustaw head_camera_device:=-1.
-"""
-
 import cv2
 import rclpy
 from cv_bridge import CvBridge
@@ -71,7 +66,7 @@ class CameraInterface(Node):
         self._use_body_as_head = False
         if self._head_camera_device < 0:
             self._use_body_as_head = True
-            self.get_logger().warn(
+            self.get_logger().warning(
                 'Kamera głowy wyłączona (head_camera_device < 0). '
                 'Publikuję obraz z kamery ciała również na /camera/head/image_raw.'
             )
@@ -79,7 +74,7 @@ class CameraInterface(Node):
             self._head_cap = self._open_capture(self._head_camera_device, 'głowy')
             if self._head_cap is None:
                 self._use_body_as_head = True
-                self.get_logger().warn(
+                self.get_logger().warning(
                     'Nie można otworzyć kamery głowy - przełączam się na obraz '
                     'z kamery ciała dla /camera/head/image_raw.'
                 )

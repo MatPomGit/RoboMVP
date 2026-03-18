@@ -68,7 +68,7 @@ class MarkerDetectionNode(Node):
                 options = apriltag.DetectorOptions(families='tag36h11')
                 return apriltag.Detector(options)
             except ImportError:
-                self.get_logger().warn(
+                self.get_logger().warning(
                     'Biblioteka apriltag niedostępna. '
                     'Używam detektora QR jako zastępczego. '
                     'Aby zainstalować: pip install apriltag'
@@ -148,7 +148,7 @@ class MarkerDetectionNode(Node):
                 msg.size = size
                 results.append(msg)
         except Exception as e:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f'Błąd detekcji AprilTag: {e}. '
                 'Sprawdź, czy biblioteka apriltag jest poprawnie zainstalowana '
                 'i czy obraz ma właściwy format.'
@@ -176,7 +176,7 @@ class MarkerDetectionNode(Node):
                 msg.size = size
                 results.append(msg)
         except Exception as e:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f'Błąd detekcji QR: {e}. '
                 'Sprawdź, czy OpenCV jest poprawnie zainstalowane '
                 'i czy marker QR jest wyraźnie widoczny w obrazie.'

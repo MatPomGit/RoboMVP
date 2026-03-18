@@ -80,7 +80,7 @@ class RoboMVPMain(Node):
                     'Parametr require_robot_connection=True wymaga aktywnego połączenia.'
                 )
                 raise
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f'Nie można połączyć z robotem: {exc}. '
                 'Kontynuuję bez połączenia sprzętowego (symulacja komend ruchu w logach).'
             )
@@ -135,13 +135,13 @@ class RoboMVPMain(Node):
                 self.get_logger().info(f'Załadowano konfigurację sceny: {config_path}')
                 return cfg or {}
             except Exception as e:
-                self.get_logger().warn(
+                self.get_logger().warning(
                     f'Błąd wczytywania konfiguracji: {e}. '
                     'Sprawdź poprawność pliku YAML i uprawnienia do odczytu. '
                     'Używam domyślnych wartości konfiguracji.'
                 )
 
-        self.get_logger().warn(
+        self.get_logger().warning(
             'Nie znaleziono pliku konfiguracyjnego sceny. Używam domyślnej konfiguracji. '
             'Podaj ścieżkę przez parametr ROS2: --ros-args -p scene_config_path:=<ścieżka>'
         )
