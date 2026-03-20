@@ -5,6 +5,8 @@ Zawiera zakodowane na stałe sekwencje trajektorii
 dla wszystkich etapów scenariusza manipulacji.
 """
 
+import time
+
 
 # Typ pozy: słownik z pozycją i orientacją (yaw w radianach)
 # Format: {'x': float, 'y': float, 'z': float, 'yaw': float}
@@ -99,22 +101,40 @@ def apply_offset_to_sequence(sequence: list, dx: float, dy: float, dz: float) ->
     return corrected
 
 
-def execute_sequence(sequence: list, robot_api=None, logger=None) -> bool:
+def execute_sequence(
+    sequence: list,
+    robot_api=None,
+    logger=None,
+    total_timeout_s: float = 30.0,
+    step_timeout_s: float = 5.0,
+) -> bool:
     """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje w trybie demo.
 
     Args:
         sequence: Lista poz do wykonania.
         robot_api: Interfejs API robota Unitree (None w trybie demo).
         logger: Logger ROS2 do wypisywania komunikatów.
+        total_timeout_s: Maksymalny czas wykonania całej sekwencji (sekundy).
+        step_timeout_s: Maksymalny czas pojedynczego kroku (sekundy).
 
     Returns:
         True jeśli sekwencja wykonana pomyślnie, False w przypadku błędu.
     """
+    start = time.monotonic()
     for i, pose in enumerate(sequence):
+        elapsed_total = time.monotonic() - start
+        if elapsed_total > total_timeout_s:
+            if logger:
+                logger.error(
+                    f'Timeout sekwencji po {elapsed_total:.2f}s (limit {total_timeout_s:.2f}s)'
+                )
+            return False
+
+        step_start = time.monotonic()
         if robot_api is not None:
             try:
                 # TODO: Integracja z Unitree SDK
-                # robot_api.move_to_pose(pose)
+                # robot_api.move_to_pose(pose, timeout_s=step_timeout_s)
                 pass
             except Exception as e:
                 if logger:
@@ -128,4 +148,13 @@ def execute_sequence(sequence: list, robot_api=None, logger=None) -> bool:
                     f'z={pose.get("z", 0):.2f}, '
                     f'yaw={pose.get("yaw", 0):.2f}'
                 )
+
+        elapsed_step = time.monotonic() - step_start
+        if elapsed_step > step_timeout_s:
+            if logger:
+                logger.error(
+                    f'Timeout kroku {i} po {elapsed_step:.2f}s (limit {step_timeout_s:.2f}s)'
+                )
+            return False
+
     return True

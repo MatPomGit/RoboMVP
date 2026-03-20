@@ -54,6 +54,23 @@ class OffsetCorrector:
 
         return dx, dy, dz
 
+    def scale_offset(self, dx: float, dy: float, dz: float) -> tuple:
+        """Skaluje już obliczony offset zgodnie z konfiguracją.
+
+        Args:
+            dx: Korekcja boczna.
+            dy: Korekcja przód/tył.
+            dz: Korekcja pionowa.
+
+        Returns:
+            Krotka (dx, dy, dz) po zastosowaniu współczynników skali.
+        """
+        return (
+            dx * self._scale_dx,
+            dy * self._scale_dy,
+            dz * self._scale_dz,
+        )
+
     def apply_offset_to_pose(
         self,
         original_pose: dict,

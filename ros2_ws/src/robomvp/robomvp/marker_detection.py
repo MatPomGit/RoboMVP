@@ -126,9 +126,7 @@ class MarkerDetectionNode(Node):
         """Wykrywa kody QR i zwraca listę MarkerDetection."""
         results = []
         try:
-            import cv2
-            detector = cv2.QRCodeDetector()
-            data, points, _ = detector.detectAndDecode(color)
+            data, points, _ = self._detector.detectAndDecode(color)
             if points is not None and data:
                 points = points[0]
                 center_x = float(np.mean(points[:, 0]))
