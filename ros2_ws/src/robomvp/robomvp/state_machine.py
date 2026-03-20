@@ -238,9 +238,9 @@ class StateMachine:
 
         if self._is_timeout('navigate_to_target_marker'):
             self._log(
-                'Timeout NAVIGATE_TO_TARGET_MARKER - przejście awaryjne do PLACE_BOX'
+                'Timeout NAVIGATE_TO_TARGET_MARKER - zakończenie scenariusza (bez PLACE_BOX)'
             )
-            self._transition_to(State.PLACE_BOX)
+            self._transition_to(State.FINISHED)
 
     def _handle_place_box(self):
         """Stan: odłożenie pudełka na drugi stół."""
