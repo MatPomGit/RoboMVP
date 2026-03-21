@@ -93,9 +93,18 @@ class RoboMVPMain(Node):
         self._state_machine = StateMachine(self._config, logger=self.get_logger())
 
         motion_timeouts = self._config.get('motion_timeouts', {})
-        self._motion_total_timeout_s = float(motion_timeouts.get('total', 30.0))
-        self._motion_step_timeout_s = float(motion_timeouts.get('step', 5.0))
+        self._motion_total_timeout_s = self._sanitize_timeout(
+            motion_timeouts.get('total', 30.0),
+            default_value=30.0,
+            key='motion_timeouts.total',
+        )
+        self._motion_step_timeout_s = self._sanitize_timeout(
+            motion_timeouts.get('step', 5.0),
+            default_value=5.0,
+            key='motion_timeouts.step',
+        )
 
+        # Subskrypcje: poza markera i offset korekcji
         self._sub_pose = self.create_subscription(
             MarkerPose, '/robomvp/marker_pose', self._on_marker_pose, 10
         )
@@ -118,6 +127,7 @@ class RoboMVPMain(Node):
     def _load_config(self, config_path: str) -> dict:
         """Wczytuje konfigurację sceny z pliku YAML."""
         if not config_path:
+            # Szukaj pliku konfiguracji względem repozytorium i typowych ścieżek kontenera
             current = Path(__file__).resolve()
             possible_paths = [
                 *[parent / 'config' / 'scene.yaml' for parent in current.parents],
@@ -157,6 +167,24 @@ class RoboMVPMain(Node):
             },
             'motion_timeouts': {'total': 30.0, 'step': 5.0},
         }
+
+    def _sanitize_timeout(self, value, default_value: float, key: str) -> float:
+        """Zamienia timeout na dodatni float lub używa wartości domyślnej."""
+        try:
+            timeout = float(value)
+        except (TypeError, ValueError):
+            self.get_logger().warn(
+                f'Nieprawidłowy timeout "{key}={value}", używam domyślnego {default_value:.2f}s'
+            )
+            return default_value
+
+        if timeout <= 0.0:
+            self.get_logger().warn(
+                f'Timeout "{key}" musi być dodatni, używam domyślnego {default_value:.2f}s'
+            )
+            return default_value
+
+        return timeout
 
     def _on_marker_pose(self, msg: MarkerPose):
         """Odbiera pozę markera i aktualizuje automat stanowy."""

@@ -24,6 +24,7 @@ Dostępne sekwencje:
 import time
 
 
+
 # Format pozy: słownik {'x': float, 'y': float, 'z': float, 'yaw': float}
 # Pola: x – przesunięcie boczne [m], y – przód/tył [m],
 #        z – wysokość ramienia [m], yaw – orientacja [rad]
@@ -125,7 +126,7 @@ def execute_sequence(
     total_timeout_s: float = 30.0,
     step_timeout_s: float = 5.0,
 ) -> bool:
-    """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje kroki przy pracy bez połączenia z robotem.
+    """Wykonuje sekwencję ruchów przez Unitree SDK lub loguje w trybie demo.
 
     Args:
         sequence: Lista poz do wykonania.
@@ -137,9 +138,6 @@ def execute_sequence(
     Returns:
         True jeśli sekwencja wykonana pomyślnie, False w przypadku błędu.
     """
-    total = len(sequence)
-    if logger:
-        logger.info(f'Rozpoczynam wykonanie sekwencji {total} kroków.')
     start = time.monotonic()
     for i, pose in enumerate(sequence):
         elapsed_total = time.monotonic() - start
@@ -150,13 +148,14 @@ def execute_sequence(
                 )
             return False
 
+        step_start = time.monotonic()
         if robot_api is not None:
             try:
                 robot_api.move_to_pose(pose, timeout_s=step_timeout_s)
             except Exception as e:
                 if logger:
                     logger.error(
-                        f'Błąd wykonania kroku {i + 1}/{total}: {e}. '
+                        f'Błąd wykonania kroku {i + 1}/{len(sequence)}: {e}. '
                         'Sprawdź połączenie z robotem i stan interfejsu SDK. '
                         'Wykonanie sekwencji zakończone błędem.'
                     )
@@ -170,6 +169,13 @@ def execute_sequence(
                     f'z={pose.get("z", 0):.2f}, '
                     f'yaw={pose.get("yaw", 0):.2f}'
                 )
-    if logger:
-        logger.info(f'Sekwencja {total} kroków wykonana pomyślnie.')
+
+        elapsed_step = time.monotonic() - step_start
+        if elapsed_step > step_timeout_s:
+            if logger:
+                logger.error(
+                    f'Timeout kroku {i + 1} po {elapsed_step:.2f}s (limit {step_timeout_s:.2f}s)'
+                )
+            return False
+
     return True
