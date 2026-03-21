@@ -174,7 +174,7 @@ def execute_sequence(
         if elapsed_step > step_timeout_s:
             if logger:
                 logger.error(
-                    f'Timeout kroku {i} po {elapsed_step:.2f}s (limit {step_timeout_s:.2f}s)'
+                    f'Timeout kroku {i + 1} po {elapsed_step:.2f}s (limit {step_timeout_s:.2f}s)'
                 )
             return False
 

@@ -192,7 +192,7 @@ class StateMachine:
         if timeout_s is None:
             return False
         elapsed = time.monotonic() - self._state_enter_time
-        return elapsed >= float(timeout_s)
+        return elapsed >= timeout_s
 
     def _handle_search_table(self):
         """Stan: szukanie stołu z pudełkiem przez detekcję markera."""

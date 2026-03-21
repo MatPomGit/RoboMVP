@@ -277,7 +277,8 @@ class RoboMVPMain(Node):
         )
         ok = execute_sequence(
             sequence,
-            robot_api=self._robot_api,            logger=self.get_logger(),
+            robot_api=self._robot_api,
+            logger=self.get_logger(),
             total_timeout_s=self._motion_total_timeout_s,
             step_timeout_s=self._motion_step_timeout_s,
         )
