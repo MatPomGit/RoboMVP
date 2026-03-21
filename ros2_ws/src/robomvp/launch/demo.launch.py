@@ -9,6 +9,8 @@ Uruchamia węzły w kolejności:
 
 import os
 
+from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -18,12 +20,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     """Generuje opis uruchomienia dla systemu RoboMVP."""
 
-    config_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        ))),
-        'config'
-    )
+    package_share_dir = get_package_share_directory('robomvp')
+    config_dir = os.path.join(package_share_dir, 'config')
     scene_config = os.path.join(config_dir, 'scene.yaml')
     camera_config = os.path.join(config_dir, 'camera.yaml')
 
