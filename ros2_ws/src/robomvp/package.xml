@@ -2,24 +2,37 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>robomvp</name>
-  <version>0.1.0</version>
-  <description>Minimalna aplikacja ROS2 MVP dla robota humanoidalnego Unitree G1 EDU.</description>
+  <version>0.2.0</version>
+  <description>Minimalna aplikacja ROS2 MVP dla robota humanoidalnego Unitree G1 EDU.
+  Demonstruje scenariusz manipulacji z detekcja AprilTag, korekcja pozycji,
+  pelna diagnostyka, odometria dead-reckoning i serwisami operatorskimi.</description>
+
   <maintainer email="maintainer@robomvp.local">RoboMVP Maintainer</maintainer>
   <license>MIT</license>
+
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+
   <member_of_group>rosidl_interface_packages</member_of_group>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

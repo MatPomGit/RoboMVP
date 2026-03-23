@@ -7,98 +7,76 @@ Ten plik to „tłumacz" między abstrakcyjnym językiem RoboMVP
 („przesuń się do pozy {'x': 0.5, 'y': 1.0, 'yaw': 0}") a konkretnym
 protokołem DDS Unitree SDK 2 (SetVelocity z prędkością i czasem).
 
-Cały reszta kodu (StateMachine, motion_sequences, main_node) nie wie
-nic o SDK. Gdybyśmy chcieli użyć innego robota, wystarczyłoby zastąpić
-ten jeden plik. To jest wzorzec projektowy „Adapter".
+INTEGRACJA Z ODOMETRIĄ (velocity_callback):
+============================================
+Węzeł robomvp_odometry.py całkuje prędkości po czasie (dead reckoning),
+ale żeby całkowanie było zsynchronizowane z rzeczywistymi komendami SDK,
+potrzebuje wiedzieć dokładnie kiedy prędkości się zmieniają.
 
-JAK DZIAŁA STEROWANIE PRĘDKOŚCIĄ (LOCOCLIENT)?
-================================================
-G1 EDU używa trybu Sport Mode (wysokiego poziomu): zamiast sterować
-każdym ze stawów nogi osobno (12 stawów × 4 nogi = 48 DOF!), wysyłamy
-trzy liczby: vx (do przodu), vy (boczny) i omega/vyaw (obrót).
-Firmware robota sam oblicza sekwencję kroków – jak dać prędkość
-samochodowi zamiast sterować każdym tłokiem silnika.
+UnitreeRobotAPI akceptuje opcjonalny ``velocity_callback`` – callable
+wywoływany przy każdej zmianie prędkości (przed SetVelocity i po StopMove).
 
-KOMENDA: LocoClient.SetVelocity(vx, vy, omega, duration)
-    vx      – prędkość do przodu [m/s]       (+ = przód)
-    vy      – prędkość boczna [m/s]           (+ = lewo)
-    omega   – prędkość kątowa [rad/s]         (+ = obrót w lewo)
-    duration – czas wykonania po stronie SDK  [s]
+Podłączenie:
+    api = UnitreeRobotAPI(velocity_callback=odometry_node.set_velocity)
 
-Po wysłaniu SetVelocity MUSIMY jeszcze czekać duration sekund po stronie
-naszego kodu – SDK wykona ruch asynchronicznie na robocie, ale nasz
-proces musi dać mu czas. Stąd time.sleep(duration_s).
+Przepływ przy move_to_pose():
+    velocity_callback(vx, vy, vyaw)   ← OdometryNode.set_velocity() [start całkowania]
+    SetVelocity(vx, vy, vyaw, dur)     ← robot zaczyna ruch
+    time.sleep(dur)
+    StopMove()                         ← robot zatrzymuje się
+    velocity_callback(0, 0, 0)         ← OdometryNode zatrzymuje całkowanie
 
-KONWERSJA POZY NA PRĘDKOŚĆ:
-============================
-Sekwencja poz (lista słowników) opisuje GDZIE robot ma dotrzeć.
-UnitreeRobotAPI przelicza różnicę między bieżącą a docelową pozą
-na prędkości i czas trwania ruchu:
+Dzięki temu odometria jest precyzyjnie zsynchronizowana z ruchem robota
+bez konieczności subskrybowania żadnego dodatkowego tematu ROS2.
 
-    odległość = sqrt(dx² + dy²)
-    czas = odległość / LINEAR_SPEED
-    vx = (dy/odległość) * LINEAR_SPEED  # komponent do przodu
-    vy = (dx/odległość) * LINEAR_SPEED  # komponent boczny
-
-Wymagania (tylko tryb robot):
-    pip install unitree_sdk2py
+KONWENCJA OSI WAYPOINTS:
+    x   – ruch boczny [m]       (+ = lewo)
+    y   – ruch do przodu [m]    (+ = przód)
+    z   – wysokość ramienia [m] (dla G1ArmActionClient)
+    yaw – orientacja [rad]      (+ = obrót w lewo)
 """
 
 import math
 import time
+from typing import Callable, Optional
 
 
 class UnitreeRobotAPI:
-    """Interfejs sprzętowy dla robota Unitree G1 EDU.
+    """Interfejs sprzętowy dla robota Unitree G1 EDU."""
 
-    Zarządza połączeniem z robotem przez Unitree SDK 2 i udostępnia
-    metody do sterowania lokomocją i ramionami.
-
-    Konwencja osi waypoints (spójna z układem TF robota):
-        x  – ruch boczny [m]      (+ = lewo)
-        y  – ruch do przodu [m]   (+ = przód)
-        z  – wysokość ramienia [m] (używana przez G1ArmActionClient)
-        yaw – orientacja [rad]    (+ = obrót w lewo, 0 = kierunek startowy)
-    """
-
-    # ---------------------------------------------------------------
-    # Parametry sterowania – wszystkie w jednym miejscu, łatwe do tuningu
-    # ---------------------------------------------------------------
-    # Prędkości dobrane konserwatywnie dla bezpieczeństwa demonstracji.
-    # Na otwartej przestrzeni można zwiększyć LINEAR_SPEED do ~0.5 m/s.
-    _LINEAR_SPEED: float = 0.3   # m/s – prędkość translacyjna
-    _YAW_SPEED: float = 0.5      # rad/s – prędkość obrotowa
-
-    # Tolerancje: poniżej tych wartości ruch jest uznany za zakończony
-    # i krok jest pomijany (oszczędza to czas na mikrokorekty).
-    _POSITION_TOLERANCE: float = 0.02  # m
-    _YAW_TOLERANCE: float = 0.05       # rad
-
-    # Podział budżetu czasu timeout_s na fazy ruchu.
-    # 40% na obrót, max 90% pozostałości na translację, reszta to rezerwa
-    # na StopMove i opóźnienia sieci (DDS przez Ethernet).
-    _YAW_TIMEOUT_FRACTION: float = 0.4
+    _LINEAR_SPEED:               float = 0.3    # m/s
+    _YAW_SPEED:                  float = 0.5    # rad/s
+    _POSITION_TOLERANCE:         float = 0.02   # m
+    _YAW_TOLERANCE:              float = 0.05   # rad
+    _YAW_TIMEOUT_FRACTION:       float = 0.4
     _TRANSLATION_TIMEOUT_FRACTION: float = 0.9
 
-    def __init__(self, network_interface: str = 'eth0') -> None:
+    def __init__(
+        self,
+        network_interface: str = 'eth0',
+        velocity_callback: Optional[Callable[[float, float, float], None]] = None,
+        stop_callback:     Optional[Callable[[], None]] = None,
+    ) -> None:
         """Inicjalizuje interfejs robota.
 
         Args:
-            network_interface: Interfejs Ethernet do robota (np. 'eth0').
-                Sprawdź aktualną nazwę przez: ip link show
+            network_interface: Nazwa interfejsu Ethernet (np. 'eth0').
+                Sprawdź: ip link show
+            velocity_callback: Wywoływany przy każdej SetVelocity z (vx, vy, vyaw).
+                Używany przez OdometryNode.set_velocity() do śledzenia prędkości.
+            stop_callback: Wywoływany przy StopMove (zerowanie prędkości).
+                Jeśli None, wywołuje velocity_callback(0, 0, 0).
         """
         self._network_interface = network_interface
-        self._loco_client = None
+        self._velocity_cb       = velocity_callback
+        self._stop_cb           = stop_callback
+        self._loco_client       = None
         self._arm_action_client = None
-        self._sdk_available = False
+        self._sdk_available     = False
 
-        # Śledzona poza robota – aktualizowana po każdym kroku ruchu.
-        # Unitree SDK nie dostarcza odometrii w Sport Mode, więc estymujemy
-        # pozycję przez dead reckoning (całkowanie komend prędkości).
-        # Jest to uproszczenie – w praktyce robot ześlizgnie się nieco
-        # względem zakodowanej trajektorii. Na potrzeby MVP jest wystarczające.
-        self._current_x: float = 0.0
-        self._current_y: float = 0.0
+        # Dead-reckoning pozycja (aktualizowana po każdym ruchu)
+        self._current_x:   float = 0.0
+        self._current_y:   float = 0.0
         self._current_yaw: float = 0.0
 
     # ------------------------------------------------------------------
@@ -106,22 +84,18 @@ class UnitreeRobotAPI:
     # ------------------------------------------------------------------
 
     def connect(self, logger=None) -> None:
-        """Nawiązuje połączenie z robotem przez Unitree SDK.
+        """Nawiązuje połączenie z robotem przez Unitree SDK 2.
 
-        Inicjalizuje transport DDS, LocoClient i G1ArmActionClient.
-        Po inicjalizacji przełącza robota w tryb chodzenia (Start = FSM ID 200).
+        WAŻNE: ChannelFactoryInitialize() musi być wywołane DOKŁADNIE RAZ
+        na cały proces (nie per-węzeł, nie per-wątek). Wielokrotne wywołanie
+        powoduje błąd inicjalizacji DDS.
 
-        WAŻNE: ChannelFactoryInitialize() należy wywołać DOKŁADNIE RAZ
-        na cały proces. Wielokrotne wywołanie powoduje błąd DDS.
-        Dlatego jest tu, nie w konstruktorze – chcemy mieć kontrolę
-        nad momentem inicjalizacji i możliwość przechwycenia błędu.
-
-        Args:
-            logger: Logger ROS2 (opcjonalny).
+        Po inicjalizacji wywołuje Start() – przełącza G1 w Sport Mode
+        (FSM ID = 200), który jest wymagany do SetVelocity.
 
         Raises:
-            RuntimeError: Gdy unitree_sdk2py nie jest zainstalowane
-                lub gdy inicjalizacja SDK się nie powiedzie.
+            RuntimeError: gdy unitree_sdk2py nie jest zainstalowane
+                lub gdy inicjalizacja DDS się nie powiedzie.
         """
         try:
             from unitree_sdk2py.core.channel import ChannelFactoryInitialize
@@ -130,16 +104,12 @@ class UnitreeRobotAPI:
         except ImportError as exc:
             msg = (
                 f'Brak modułu Unitree SDK: {exc}. '
-                'Zainstaluj pakiet: pip install unitree_sdk2py. '
-                'Bez SDK robot nie może działać w trybie sprzętowym.'
+                'Zainstaluj: pip install unitree_sdk2py'
             )
             self._log(logger, 'error', msg)
             raise RuntimeError(msg) from exc
 
         try:
-            # Inicjalizacja transportu DDS – RAZ na cały proces.
-            # Argument 0 = użyj pierwszej dostępnej karty sieciowej
-            # (nadpisane przez drugi argument – nazwę interfejsu).
             ChannelFactoryInitialize(0, self._network_interface)
 
             self._loco_client = LocoClient()
@@ -150,39 +120,29 @@ class UnitreeRobotAPI:
             self._arm_action_client.SetTimeout(10.0)
             self._arm_action_client.Init()
 
-            # Przełączenie w tryb chodzenia (FSM ID = 200 = Sport Mode).
-            # Bez wywołania Start() robot ignoruje komendy SetVelocity.
             self._loco_client.Start()
             self._sdk_available = True
             self._log(
-                logger,
-                'info',
-                f'Połączono z robotem przez interfejs: {self._network_interface}. '
-                'Robot w trybie chodzenia (Sport Mode aktywny).',
+                logger, 'info',
+                f'Połączono z robotem ({self._network_interface}). Sport Mode aktywny.'
             )
         except Exception as exc:
             msg = (
-                f'Błąd inicjalizacji SDK Unitree na interfejsie {self._network_interface}: '
-                f'{exc}. Sprawdź połączenie sieciowe i stan robota.'
+                f'Błąd inicjalizacji SDK ({self._network_interface}): {exc}. '
+                'Sprawdź kabel Ethernet i stan robota.'
             )
             self._log(logger, 'error', msg)
             raise RuntimeError(msg) from exc
 
     def disconnect(self) -> None:
-        """Rozłącza połączenie i bezpiecznie zatrzymuje robota.
+        """Zatrzymuje robota i rozłącza SDK.
 
-        Kolejność operacji jest ważna:
-        1. StopMove() – wyzerowanie prędkości (robot natychmiast staje)
-        2. Damp()     – tryb tłumiony (serwomechanizmy rozluźnione, bezpieczne)
-        3. release arm – ramiona w pozycji spoczynkowej
+        Sekwencja bezpiecznego zatrzymania:
+        1. StopMove()   – zerowanie prędkości (robot staje w miejscu)
+        2. Damp()       – tryb tłumiony (serwomechanizmy rozluźnione)
+        3. release arm  – ramiona w pozycji spoczynkowej
 
-        Damp() bez wcześniejszego StopMove() może spowodować że robot
-        zatrzyma się z impulsem inercji (nogi lekko się ślizgają).
-        Dlatego zawsze najpierw StopMove.
-
-        Metoda jest bezpieczna do wywołania gdy robot nie jest połączony
-        (wszystkie try/except) – używamy tego w destroy_node() bez obawy
-        o wyjątki podczas czyszczenia zasobów.
+        Bezpieczna do wywołania gdy robot nie jest połączony (wszystkie try/except).
         """
         if self._loco_client is not None:
             try:
@@ -212,86 +172,67 @@ class UnitreeRobotAPI:
     # ------------------------------------------------------------------
 
     def move_to_pose(self, pose: dict, timeout_s: float = 5.0) -> None:
-        """Przemieszcza robota do podanej bezwzględnej pozy.
+        """Przemieszcza robota do podanej pozycji absolutnej.
 
         ALGORYTM (dwufazowy):
-        Faza 1 – Obrót: robot obraca się w miejscu do żądanego yaw.
-            Obliczamy deltę kąta, normalizujemy do [-π, π] żeby wybrać
-            krótszą ścieżkę (np. -90° zamiast +270°), i wysyłamy
-            prędkość kątową z odpowiednim znakiem.
+        1. Obrót w miejscu do żądanego yaw.
+           Delta yaw normalizowana do [-π, π] – wybiera krótszą ścieżkę.
+        2. Translacja do (x, y) – wektor dx/dy dekompozycja na vx, vy.
 
-        Faza 2 – Translacja: robot idzie do żądanej pozycji (x, y).
-            Obliczamy wektor przesunięcia i dekompozujemy go na vx (przód)
-            i vy (bok). Dzielimy przez odległość żeby uzyskać jednostkowy
-            wektor kierunku, mnożymy przez LINEAR_SPEED.
-
-        Komponent 'z' (wysokość ramienia) NIE jest obsługiwany przez
-        lokomocję – do sterowania ramionami użyj execute_arm_action().
+        Każda faza wywołuje velocity_callback przed i po SetVelocity,
+        co pozwala OdometryNode na precyzyjne śledzenie prędkości.
 
         Args:
-            pose: Słownik z kluczami 'x', 'y', 'z', 'yaw'.
-            timeout_s: Łączny limit czasu na cały krok [s].
+            pose:      Słownik z kluczami 'x', 'y', 'z', 'yaw' [m, rad].
+            timeout_s: Łączny limit czasu dla tego kroku [s].
 
         Raises:
-            RuntimeError: Gdy connect() nie było wywołane wcześniej.
+            RuntimeError: gdy connect() nie było wywołane.
         """
         if not self._sdk_available or self._loco_client is None:
             raise RuntimeError(
-                'SDK Unitree nie jest zainicjalizowane. '
-                'Wywołaj connect() przed move_to_pose().'
+                'SDK nie zainicjalizowane – wywołaj connect() przed move_to_pose().'
             )
 
-        target_x = float(pose.get('x', 0.0))
-        target_y = float(pose.get('y', 0.0))
+        target_x   = float(pose.get('x',   0.0))
+        target_y   = float(pose.get('y',   0.0))
         target_yaw = float(pose.get('yaw', self._current_yaw))
 
         start = time.monotonic()
 
-        # Faza 1: Obrót do żądanej orientacji
+        # ── Faza 1: Obrót ────────────────────────────────────────────────
         dyaw = target_yaw - self._current_yaw
-        # Normalizacja do [-π, π]:
-        #   (dyaw + π) % (2π) daje wartość w [0, 2π]
-        #   Odjęcie π daje wartość w [-π, π]
-        # Przykład: dyaw = 3π → znormalizowane = π (obrót o 180° w lewo)
-        #           dyaw = -3π → znormalizowane = -π (obrót o 180° w prawo)
-        dyaw = (dyaw + math.pi) % (2 * math.pi) - math.pi
+        dyaw = (dyaw + math.pi) % (2.0 * math.pi) - math.pi  # [-π, π]
 
         if abs(dyaw) > self._YAW_TOLERANCE:
-            rotation_time = abs(dyaw) / self._YAW_SPEED
-            allocated_rot = min(rotation_time, timeout_s * self._YAW_TIMEOUT_FRACTION)
+            rot_time      = abs(dyaw) / self._YAW_SPEED
+            allocated_rot = min(rot_time, timeout_s * self._YAW_TIMEOUT_FRACTION)
             self._send_velocity(
-                vx=0.0,
-                vy=0.0,
-                vyaw=math.copysign(self._YAW_SPEED, dyaw),  # znak dyaw = kierunek obrotu
+                vx=0.0, vy=0.0,
+                vyaw=math.copysign(self._YAW_SPEED, dyaw),
                 duration_s=allocated_rot,
             )
             self._current_yaw = target_yaw
 
-        # Faza 2: Translacja do żądanej pozycji
-        dx = target_x - self._current_x
-        dy = target_y - self._current_y
-        distance = math.hypot(dx, dy)  # sqrt(dx² + dy²) – bezpieczniejsze niż ręczne obliczenie
+        # ── Faza 2: Translacja ───────────────────────────────────────────
+        dx       = target_x - self._current_x
+        dy       = target_y - self._current_y
+        distance = math.hypot(dx, dy)
 
         if distance > self._POSITION_TOLERANCE:
-            elapsed = time.monotonic() - start
+            elapsed   = time.monotonic() - start
             remaining = max(0.0, timeout_s - elapsed)
             move_time = distance / self._LINEAR_SPEED
 
-            # Mapowanie osi waypoints → osi LocoClient:
-            # W układzie pozy: y = przód, x = bok
-            # W LocoClient:   vx = przód, vy = bok
-            # Dlatego dy/distance → vx (komponent do przodu)
-            #         dx/distance → vy (komponent boczny)
+            # Układ waypoints: y=przód, x=bok
+            # LocoClient:     vx=przód, vy=bok
             vx = (dy / distance) * self._LINEAR_SPEED
             vy = (dx / distance) * self._LINEAR_SPEED
             self._send_velocity(
-                vx=vx,
-                vy=vy,
-                vyaw=0.0,
+                vx=vx, vy=vy, vyaw=0.0,
                 duration_s=min(move_time, remaining * self._TRANSLATION_TIMEOUT_FRACTION),
             )
 
-        # Aktualizacja śledzonej pozy po zakończeniu ruchu (dead reckoning)
         self._current_x = target_x
         self._current_y = target_y
 
@@ -300,37 +241,22 @@ class UnitreeRobotAPI:
     # ------------------------------------------------------------------
 
     def execute_arm_action(self, action_name: str) -> int:
-        """Wykonuje predefiniowaną akcję ramion robota.
+        """Wykonuje predefiniowaną akcję ramion przez G1ArmActionClient.
 
-        Używa G1ArmActionClient, który wysyła do robota ID akcji
-        z wbudowanego słownika gestów. Robot wykonuje animację ramion
-        zdefiniowaną fabrycznie w oprogramowaniu.
-
-        Dostępne akcje (z action_map w SDK):
-            'release arm' – zwolnienie ramion (pozycja spoczynkowa)
-            'shake hand'  – podanie ręki
-            'high five'   – przybicie piątki
-            'hug'         – objęcie (dobra pozycja do trzymania pudełka!)
-            'clap'        – klaskanie
-            'heart'       – serce dłońmi
-            'hands up'    – ręce do góry
-            i inne...
-
-        Args:
-            action_name: Klucz z słownika action_map SDK.
+        Dostępne akcje (przykłady z action_map w SDK):
+            'release arm', 'shake hand', 'hug', 'high five',
+            'clap', 'heart', 'hands up', 'face wave', 'high wave'.
+        Pełna lista: unitree_sdk2py.g1.arm.g1_arm_action_client.action_map
 
         Returns:
-            Kod błędu z SDK (0 = sukces, inne = błąd).
+            Kod błędu z SDK (0 = sukces).
 
         Raises:
-            RuntimeError: Gdy connect() nie było wywołane.
-            ValueError: Gdy action_name nie ma w słowniku SDK.
+            RuntimeError: gdy SDK nie jest zainicjalizowane.
+            ValueError:   gdy action_name nie ma w słowniku SDK.
         """
         if not self._sdk_available or self._arm_action_client is None:
-            raise RuntimeError(
-                'SDK Unitree nie jest zainicjalizowane. '
-                'Wywołaj connect() przed execute_arm_action().'
-            )
+            raise RuntimeError('SDK nie zainicjalizowane.')
 
         try:
             from unitree_sdk2py.g1.arm.g1_arm_action_client import action_map
@@ -340,16 +266,22 @@ class UnitreeRobotAPI:
         action_id = action_map.get(action_name)
         if action_id is None:
             raise ValueError(
-                f'Nieznana akcja ramion: {action_name!r}. '
-                f'Dostępne akcje: {list(action_map.keys())}'
+                f'Nieznana akcja: {action_name!r}. Dostępne: {list(action_map.keys())}'
             )
-
         return self._arm_action_client.ExecuteAction(action_id)
 
     @property
     def is_connected(self) -> bool:
-        """Zwraca True gdy SDK jest zainicjalizowane i połączone z robotem."""
+        """True gdy SDK jest zainicjalizowane i połączone."""
         return self._sdk_available and self._loco_client is not None
+
+    def get_pose(self) -> dict:
+        """Zwraca bieżącą estymowaną pozycję (dead reckoning).
+
+        Pozycja może dryfować relative do rzeczywistej – to ograniczenie
+        dead reckoning bez zewnętrznego systemu lokalizacji.
+        """
+        return {'x': self._current_x, 'y': self._current_y, 'yaw': self._current_yaw}
 
     # ------------------------------------------------------------------
     # Metody wewnętrzne
@@ -357,11 +289,6 @@ class UnitreeRobotAPI:
 
     @staticmethod
     def _log(logger, level: str, message: str) -> None:
-        """Loguje wiadomość przez logger ROS2 lub stdout jako fallback.
-
-        Statyczna metoda (nie potrzebuje self) – może być wywołana nawet
-        przed inicjalizacją instancji.
-        """
         if logger is not None:
             getattr(logger, level)(message)
         else:
@@ -369,48 +296,43 @@ class UnitreeRobotAPI:
 
     def _send_velocity(
         self,
-        vx: float,
-        vy: float,
-        vyaw: float,
+        vx: float, vy: float, vyaw: float,
         duration_s: float,
     ) -> None:
-        """Wysyła komendę prędkości i czeka na jej wykonanie.
+        """Wysyła SetVelocity, czeka, następnie StopMove.
 
-        SDK obsługuje duration po stronie serwera – robot sam zatrzyma się
-        po upływie czasu. My też czekamy (time.sleep) żeby nie wysyłać
-        następnej komendy zanim robot skończy obecny ruch.
+        Powiadamia velocity_callback PRZED i PO ruchu, żeby OdometryNode
+        mógł dokładnie zsynchronizować całkowanie z ruchem robota.
 
-        POPRAWKA (błąd #10): Używamy try/finally żeby StopMove() było
-        zawsze wywołane, nawet jeśli wątek zostanie przerwany (Ctrl+C,
-        KeyboardInterrupt) podczas time.sleep(). Bez tego robot mógłby
-        kontynuować ruch po zakończeniu programu.
-
-        Jak działa try/finally:
-            try:      – wykonaj kod w bloku
-            finally:  – ZAWSZE wykonaj ten kod, czy był wyjątek czy nie
-        To gwarantuje bezpieczne zatrzymanie nawet przy crashu.
-
-        Args:
-            vx: Prędkość do przodu/tyłu [m/s].
-            vy: Prędkość boczna [m/s].
-            vyaw: Prędkość kątowa [rad/s].
-            duration_s: Czas trwania komendy [s].
+        TRY/FINALLY: StopMove i zerowanie callbacku są gwarantowane nawet
+        przy KeyboardInterrupt podczas time.sleep.
         """
         if duration_s <= 0.0:
             return
+
+        # Powiadom odometrię o nowych prędkościach
+        if self._velocity_cb is not None:
+            try:
+                self._velocity_cb(vx, vy, vyaw)
+            except Exception:
+                pass
 
         self._loco_client.SetVelocity(vx, vy, vyaw, duration_s)
         try:
             time.sleep(duration_s)
         finally:
-            # POPRAWKA: StopMove() jest teraz w finally – gwarantuje
-            # zatrzymanie robota nawet przy przerwaniu wątku.
-            # Poprzednia wersja miała StopMove() po time.sleep() bez
-            # zabezpieczenia, więc Ctrl+C podczas sleep pomijał zatrzymanie.
             try:
                 self._loco_client.StopMove()
             except Exception:
-                # StopMove może rzucić wyjątek jeśli połączenie zostało
-                # już zerwane (np. podczas shutdown). Ignorujemy go –
-                # liczy się że próbowaliśmy zatrzymać robota.
                 pass
+            # Zeruj prędkości w odometrii
+            if self._stop_cb is not None:
+                try:
+                    self._stop_cb()
+                except Exception:
+                    pass
+            elif self._velocity_cb is not None:
+                try:
+                    self._velocity_cb(0.0, 0.0, 0.0)
+                except Exception:
+                    pass

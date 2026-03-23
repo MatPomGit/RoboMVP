@@ -1,0 +1,57 @@
+# ManipulationTask.action
+# ROS2 Action do wykonania pełnego scenariusza manipulacji lub pojedynczego kroku.
+#
+# DLACZEGO ACTION, NIE TOPIC ANI SERWIS?
+# ========================================
+# ROS2 oferuje trzy mechanizmy komunikacji:
+#   - Topic (publish/subscribe): jednostronne, ciągłe strumienie danych.
+#     Nie nadaje się gdy chcemy wiedzieć czy zadanie się skończyło.
+#   - Service (request/response): synchroniczny, ale blokujący – klient czeka
+#     na odpowiedź. Nie nadaje się dla długotrwałych zadań (robot może iść
+#     minutami, a serwis timeoutuje po kilku sekundach).
+#   - Action (goal/feedback/result): asynchroniczny, z feedbackiem w trakcie
+#     i wynikiem na końcu. IDEALNY dla sekwencji ruchów robota.
+#
+# Klient wysyła Goal → serwer akceptuje → serwer wysyła Feedback co krok →
+# serwer wysyła Result gdy skończone. Klient może też anulować (Cancel).
+
+# ─── GOAL (co klient chce zrobić) ────────────────────────────────────────────
+# Identyfikator sekwencji do wykonania.
+# Możliwe wartości: 'full_scenario', 'approach_table', 'pick_box',
+#                   'rotate_180', 'walk_to_second_table', 'place_box'
+string sequence_name
+
+# Czy zastosować bieżący offset korekcji do sekwencji?
+# True = uwzględnij pomiar markera; False = wykonaj sekwencję bez korekcji
+bool apply_offset
+
+---
+# ─── RESULT (co serwer zwraca po zakończeniu) ─────────────────────────────────
+# Czy sekwencja zakończyła się sukcesem?
+bool success
+
+# Opis wyniku (np. "OK", "timeout po 30s", "błąd SDK: połączenie zerwane")
+string message
+
+# Czas wykonania sekwencji w sekundach
+float32 elapsed_seconds
+
+# Stan automatu stanowego po zakończeniu sekwencji
+string final_state
+
+---
+# ─── FEEDBACK (co serwer raportuje w trakcie) ─────────────────────────────────
+# Numer aktualnie wykonywanego kroku (1-based)
+int32 current_step
+
+# Łączna liczba kroków w sekwencji
+int32 total_steps
+
+# Procentowy postęp (0.0 – 1.0)
+float32 progress
+
+# Opis bieżącego kroku (np. "Krok 2/4: ruch do x=0.0 y=0.6")
+string step_description
+
+# Aktualny stan automatu stanowego (dla monitorowania w RViz / rqt)
+string current_state

@@ -1,7 +1,15 @@
+# RoboMVP v0.2.0 - zaleznosci Pythona
+# pip install -r requirements.txt
+#
+# Zaleznosci ROS2 (przez apt):
+#   sudo apt install ros-humble-cv-bridge ros-humble-tf2-ros
+#   sudo apt install ros-humble-common-interfaces
+#
+# Zaleznosc sprzetowa (tylko z robotem):
+#   pip install unitree_sdk2py
+
 opencv-python>=4.5.0
 apriltag>=0.0.16
 numpy>=1.21.0
 pyyaml>=6.0
-
-# Opcjonalna zależność sprzętowa – wymagana tylko na sprzęcie rzeczywistym.
-# unitree_sdk2py
+# unitree_sdk2py   # odkomentuj przy pracy z robotem

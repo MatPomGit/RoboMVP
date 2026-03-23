@@ -9,11 +9,13 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+# Generowanie typów wiadomości, serwisów i akcji
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MarkerDetection.msg"
   "msg/MarkerPose.msg"
   "msg/Offset.msg"
   "msg/State.msg"
+  "action/ManipulationTask.action"
 )
 
 ament_python_install_package(${PROJECT_NAME})
@@ -23,6 +25,10 @@ install(PROGRAMS
   robomvp/marker_detection.py
   robomvp/marker_pose_estimator.py
   robomvp/main_node.py
+  robomvp/robomvp_diagnostics.py
+  robomvp/robomvp_odometry.py
+  robomvp/robomvp_tf_publisher.py
+  robomvp/robomvp_teleop.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,219 +1,176 @@
-# RoboMVP
+# RoboMVP v0.2.0
 
-## Cel projektu
+System ROS2 do autonomicznego scenariusza manipulacji na robocie humanoidalnym **Unitree G1 EDU**.
 
-RoboMVP to minimalna aplikacja ROS2 demonstrująca scenariusz manipulacji dla robota humanoidalnego **Unitree G1 EDU**. Projekt realizuje **MVP (Minimum Viable Product)** — prosty, deterministyczny pipeline bez uczenia maszynowego, gotowy do uruchomienia w ciągu 2 tygodni.
-
-> 📖 **Szczegółowa dokumentacja techniczna**: [docs/sterowanie_robotem.md](docs/sterowanie_robotem.md)
-> — Jak przekazywane są komendy SDK i ROS2, czym jest Sport Mode oraz jak sterować górną i dolną częścią ciała niezależnie.
+> 📖 **Instrukcja obsługi (PDF/DOCX)**: `RoboMVP_Instrukcja_Obslugi.docx`
+> — Instalacja, architektura, opis węzłów, przewodnik operatora, kalibracja, troubleshooting.
+>
+> 📖 **Dokumentacja techniczna SDK**: [docs/sterowanie_robotem.md](docs/sterowanie_robotem.md)
+>
+> 📖 **Historia poprawek**: [docs/poprawki_i_architektura.md](docs/poprawki_i_architektura.md)
 
 ---
 
 ## Scenariusz demonstracyjny
 
-Robot wykonuje następującą sekwencję kroków:
+Robot wykonuje 7-etapową sekwencję:
 
-1. Robot podchodzi do stołu.
-2. Robot wykrywa pudełko na stole za pomocą markera AprilTag.
-3. Robot wyrównuje się z pudełkiem (korekcja offsetu).
-4. Robot podnosi pudełko.
-5. Robot obraca się o 180 stopni.
-6. Robot idzie do drugiego stołu.
-7. Robot odkłada pudełko na drugi stół.
+1. Szuka markera stołu startowego (AprilTag ID=21)
+2. Wykrywa marker pudełka (AprilTag ID=10)
+3. Wyrównuje pozycję z pudełkiem (korekcja offsetu kamery)
+4. Podnosi pudełko
+5. Obraca się o 180°
+6. Idzie do drugiego stołu (marker ID=22/30)
+7. Odkłada pudełko
 
-Ruch jest realizowany za pomocą **predefiniowanych sekwencji ruchów** — bez planowania i uczenia maszynowego.
-
----
-
-## Konfiguracja sprzętowa
-
-Robot: **Unitree G1 EDU**
-
-### Kamera ciała
-- Używana do manipulacji i wykrywania markerów na pudełku i stole
-- Temat ROS2: `/camera/body/image_raw`
-
-### Kamera głowy
-- Używana do nawigacji i wykrywania dalekich markerów
-- Temat ROS2: `/camera/head/image_raw`
+Ruch realizowany przez **predefiniowane sekwencje waypoints** — bez planowania, bez uczenia maszynowego.
 
 ---
 
-## Lokalizacja oparta na markerach
-
-Obiekty w środowisku oznaczone są markerami **AprilTag** (lub kodami QR):
-
-| Obiekt | Klucz w scene.yaml |
-|--------|--------------------|
-| Pudełko | `box_marker_id` |
-| Stół startowy | `table_markers.pickup_table` |
-| Stół docelowy | `table_markers.place_table` |
-| Cel nawigacji | `target_marker` |
-
-Identyfikatory markerów konfiguruje się w pliku `config/scene.yaml`.
-Nie są one zakodowane na stałe w kodzie programu.
-
-System wykrywa markery i szacuje ich **pozycję 3D względem kamery**:
-
-```json
-{
-  "marker_id": 12,
-  "position": [x, y, z],
-  "orientation": [qx, qy, qz, qw]
-}
-```
-
-Korekcja pozycji wykorzystuje offset:
+## Architektura v0.2.0 — 8 węzłów ROS2
 
 ```
-dx, dy, dz = oczekiwana_pozycja - zmierzona_pozycja
+robomvp_tf_publisher  ──/tf_static──────────────────────────────────────────┐
+camera_interface      ──/camera/body/image_raw──────────────────────────┐   │
+                      ──/camera/head/image_raw──────────────────────┐   │   │
+marker_detection      ──/robomvp/marker_detections──────────────┐   │   │   │
+marker_pose_estimator ──/robomvp/marker_pose, /offset───────┐   │   │   │   │
+robomvp_odometry      ──/odom, /tf──────────────────────┐   │   │   │   │   │
+robomvp_diagnostics   ──/diagnostics───────────────┐    │   │   │   │   │   │
+                                                   │    │   │   │   │   │   │
+robomvp_main ─── subskrybuje: /marker_pose, /offset│    │   │   │   │   │   │
+             ─── publikuje:   /state, /motion_cmd  │    │   │   │   │   │   │
+             ─── serwisy:     /pause, /e_stop, /reset   │   │   │   │   │   │
+             ─── action:      /manipulation_task        │   │   │   │   │   │
+                                                        └───┴───┴───┴───┴───┘
+robomvp_teleop ── /cmd_vel ──────────────────────────────────────────────────
+```
+
+### Wszystkie tematy ROS2
+
+| Temat | Typ | Hz |
+|-------|-----|----|
+| `/camera/body/image_raw` | `sensor_msgs/Image` | 10 |
+| `/camera/head/image_raw` | `sensor_msgs/Image` | 10 |
+| `/robomvp/marker_detections` | `robomvp/MarkerDetection` | ~10 |
+| `/robomvp/marker_pose` | `robomvp/MarkerPose` | ~10 |
+| `/robomvp/offset` | `robomvp/Offset` | ~10 |
+| `/robomvp/state` | `robomvp/State` | 1 |
+| `/robomvp/motion_command` | `std_msgs/String` | zdarzeniowy |
+| `/odom` | `nav_msgs/Odometry` | 50 |
+| `/tf` | `tf2_msgs/TFMessage` | 50 |
+| `/tf_static` | `tf2_msgs/TFMessage` | raz |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | 1 |
+| `/cmd_vel` | `geometry_msgs/Twist` | zmienny |
+| `/robomvp/teleop_active` | `std_msgs/Bool` | zmienny |
+
+### Serwisy ROS2
+
+| Serwis | Typ | Opis |
+|--------|-----|------|
+| `/robomvp/pause` | `std_srvs/SetBool` | True = wstrzymaj, False = wznów |
+| `/robomvp/emergency_stop` | `std_srvs/Trigger` | Natychmiastowe zatrzymanie |
+| `/robomvp/reset` | `std_srvs/Trigger` | Reset do SEARCH_TABLE |
+
+### Action Server
+
+`/robomvp/manipulation_task` (`robomvp/ManipulationTask`)
+— wykonuje sekwencję z feedbackiem co krok; obsługuje Cancel.
+
+---
+
+## Szybki start
+
+### Wymagania
+
+- Ubuntu 22.04, ROS2 Humble, Python 3.10+
+- `pip install opencv-python apriltag numpy pyyaml`
+- `sudo apt install ros-humble-cv-bridge ros-humble-tf2-ros ros-humble-common-interfaces`
+- `pip install unitree_sdk2py` (tylko z fizycznym robotem)
+
+### Weryfikacja prereqs
+
+```bash
+./scripts/check_system.sh
+```
+
+### Uruchomienie (tryb demo, bez robota)
+
+```bash
+./scripts/run_demo.sh
+```
+
+### Uruchomienie z robotem
+
+```bash
+./scripts/run_demo.sh --robot --interface eth0 --body-cam 0 --head-cam 1
+```
+
+### Uruchomienie z RViz
+
+```bash
+./scripts/run_demo.sh --rviz
+```
+
+### Sterowanie ręczne (teleop)
+
+```bash
+./scripts/run_demo.sh --teleop
+# W osobnym terminalu:
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
 
 ---
 
-## Architektura systemu
+## Sterowanie operatorskie
 
+```bash
+# Wstrzymaj scenariusz
+ros2 service call /robomvp/pause std_srvs/srv/SetBool '{data: true}'
+
+# Wznów
+ros2 service call /robomvp/pause std_srvs/srv/SetBool '{data: false}'
+
+# Emergency stop
+./scripts/emergency_stop.sh
+
+# Reset do SEARCH_TABLE
+ros2 service call /robomvp/reset std_srvs/srv/Trigger '{}'
+
+# Wykonaj sekwencję przez Action (z podglądem feedbacku)
+ros2 action send_goal --feedback /robomvp/manipulation_task \
+  robomvp/action/ManipulationTask \
+  '{sequence_name: "pick_box", apply_offset: true}'
 ```
-                +-----------------------+
-                |      Head Camera      |
-                +-----------+-----------+
-                            |
-                    /camera/head/image_raw
-                            |
-                  +---------------------+
-                  |  marker_detection   |
-                  +----------+----------+
-                             |
-                   /robomvp/marker_detections
-                             |
-                  +----------------------+
-                  | marker_pose_estimator|
-                  +----------+-----------+
-                             |
-                /robomvp/marker_pose + /robomvp/offset
-                             |
-+-------------+       +-------------------+       +---------------------+
-| Body Camera |-----> |   robomvp_main    |-----> | motion_sequences    |
-+------+------+       |   state_machine   |       | execution           |
-       |              +-------------------+       +---------------------+
-/camera/body/image_raw     /robomvp/state               Unitree SDK
-```
-
-### Węzły i moduły ROS2
-
-| Węzeł / Moduł | Opis |
-|---------------|------|
-| `/camera_interface` | Publikuje obrazy z obu kamer (tryb demo lub sprzętowy) |
-| `/marker_detection` | Wykrywa markery AprilTag/QR w obrazach kamer |
-| `/marker_pose_estimator` | Oblicza pozycje 3D markerów na podstawie kalibracji kamery |
-| `/robomvp_main` | Główny węzeł: automat stanowy i koordynacja wykonania ruchów |
-| `unitree_robot_api` | Biblioteka sterowania sprzętowego – obsługuje LocoClient Unitree SDK 2 |
-
-### Tematy ROS2
-
-| Temat | Typ | Opis |
-|-------|-----|------|
-| `/camera/body/image_raw` | `sensor_msgs/Image` | Obraz kamery ciała |
-| `/camera/head/image_raw` | `sensor_msgs/Image` | Obraz kamery głowy |
-| `/robomvp/marker_detections` | `robomvp/MarkerDetection` | Wykryte markery |
-| `/robomvp/marker_pose` | `robomvp/MarkerPose` | Poza 3D markera |
-| `/robomvp/offset` | `robomvp/Offset` | Offset korekcji |
-| `/robomvp/state` | `robomvp/State` | Stan automatu |
-| `/robomvp/motion_command` | `std_msgs/String` | Komenda ruchu |
 
 ---
 
 ## Automat stanowy
 
 ```
-SEARCH_TABLE
-      ↓  (wykryto marker stołu startowego)
-DETECT_MARKER
-      ↓  (wykryto marker pudełka)
-ALIGN_WITH_BOX
-      ↓  (offset < próg)
-PICK_BOX
-      ↓  (sekwencja zakończona)
-ROTATE_180
-      ↓  (sekwencja zakończona)
-NAVIGATE_TO_TARGET_MARKER
-      ↓  (marker stołu docelowego w zasięgu)
-PLACE_BOX
-      ↓  (sekwencja zakończona)
+SEARCH_TABLE  ──→ (marker stołu ID=21)
+DETECT_MARKER ──→ (marker pudełka ID=10)  + sekwencja: approach_table
+ALIGN_WITH_BOX──→ (|dx|<0.05 i |dz|<0.05)
+PICK_BOX      ──→ (notify_sequence_done)  + sekwencja: pick_box
+ROTATE_180    ──→ (notify_sequence_done)  + sekwencja: rotate_180
+NAVIGATE_TO_TARGET_MARKER ──→ (marker ID=30/22, z<0.3m)  + sekwencja: walk_to_second_table
+PLACE_BOX     ──→ (notify_sequence_done)  + sekwencja: place_box
 FINISHED
 ```
 
+Stany `PICK_BOX`, `ROTATE_180`, `PLACE_BOX` **czekają** na potwierdzenie `notify_sequence_done()` przed przejściem dalej. To kluczowa poprawka v0.2.0.
+
 ---
 
-## Instalacja
-
-### Wymagania
-
-- Ubuntu 22.04
-- ROS2 Humble
-- Python 3.10+
-- OpenCV (`pip install opencv-python`)
-- Biblioteka AprilTag (`pip install apriltag`)
-- `cv_bridge` (ROS2)
-- Unitree SDK 2 — **wymagany tylko w trybie robot** (`pip install unitree_sdk2py`)
-
-### Instalacja zależności
-
-```bash
-sudo apt update
-sudo apt install ros-humble-cv-bridge ros-humble-launch-ros
-pip install opencv-python apriltag numpy pyyaml
-
-# Tylko dla trybu robot (sterowanie sprzętowe Unitree G1 EDU):
-pip install unitree_sdk2py
-```
-
-### Budowanie pakietów
+## Budowanie i testy
 
 ```bash
 cd ros2_ws
 colcon build --symlink-install
 source install/setup.bash
-```
 
----
-
-## Uruchomienie
-
-Aplikacja działa wyłącznie z rzeczywistymi kamerami. Połączenie z robotem jest opcjonalne (możliwe uruchomienie bez robota, z logowaniem sekwencji ruchu).
-
-Jeśli robot ma tylko jedną kamerę, uruchom z parametrem `head_camera_device:=-1` (strumień głowy będzie mapowany na kamerę ciała).
-
-```bash
-bash scripts/run_demo.sh
-```
-
-lub ręcznie:
-
-```bash
-cd ros2_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch robomvp demo.launch.py head_camera_device:=-1 require_robot_connection:=false
-```
-
-### Sprawdzenie grafu węzłów
-
-```bash
-ros2 node list
-# /camera_interface
-# /marker_detection
-# /marker_pose_estimator
-# /robomvp_main
-
-ros2 topic list
-# /camera/body/image_raw
-# /camera/head/image_raw
-# /robomvp/marker_detections
-# /robomvp/marker_pose
-# /robomvp/offset
-# /robomvp/state
-# /robomvp/motion_command
+# Testy jednostkowe automatu stanowego (bez ROS2)
+python -m pytest ../tests/ -v
 ```
 
 ---
@@ -223,37 +180,48 @@ ros2 topic list
 ```
 RoboMVP/
 ├── README.md
-├── LICENSE
 ├── requirements.txt
 ├── config/
-│   ├── scene.yaml          # Konfiguracja sceny i markerów
+│   ├── scene.yaml          # ID markerów, progi, timeouty
 │   └── camera.yaml         # Kalibracja kamer
 ├── docs/
-│   └── sterowanie_robotem.md  # Dokumentacja techniczna sterowania
+│   ├── sterowanie_robotem.md       # SDK, Sport Mode, sterowanie ramionami
+│   └── poprawki_i_architektura.md  # Historia błędów i poprawek
+├── rviz/
+│   └── robomvp.rviz        # Konfiguracja RViz2
 ├── scripts/
-│   └── run_demo.sh         # Skrypt uruchomienia (sprzęt rzeczywisty)
-└── ros2_ws/
-    └── src/
-        └── robomvp/
-            ├── CMakeLists.txt
-            ├── package.xml
-            ├── setup.py
-            ├── resource/
-            │   └── robomvp
-            ├── launch/
-            │   └── demo.launch.py
-            ├── msg/
-            │   ├── MarkerDetection.msg
-            │   ├── MarkerPose.msg
-            │   ├── Offset.msg
-            │   └── State.msg
-            └── robomvp/
-                ├── __init__.py
-                ├── camera_interface.py       # Interfejs kamer (demo/sprzęt)
-                ├── marker_detection.py       # Detekcja markerów AprilTag/QR
-                ├── marker_pose_estimator.py  # Estymacja pozy 3D markerów
-                ├── motion_sequences.py       # Predefiniowane sekwencje ruchów
-                ├── state_machine.py          # Deterministyczny automat stanowy
-                ├── main_node.py              # Główny węzeł orkiestrujący pipeline
-                └── unitree_robot_api.py      # Integracja z Unitree SDK 2
+│   ├── run_demo.sh          # Główny skrypt uruchomienia
+│   ├── emergency_stop.sh    # Szybkie zatrzymanie
+│   └── check_system.sh      # Weryfikacja prereqs
+├── tests/
+│   └── test_state_machine.py
+└── ros2_ws/src/robomvp/
+    ├── action/
+    │   └── ManipulationTask.action   # ROS2 Action (goal/feedback/result)
+    ├── msg/
+    │   ├── MarkerDetection.msg
+    │   ├── MarkerPose.msg
+    │   ├── Offset.msg
+    │   └── State.msg
+    ├── launch/
+    │   └── demo.launch.py
+    └── robomvp/
+        ├── camera_interface.py
+        ├── marker_detection.py
+        ├── marker_pose_estimator.py
+        ├── motion_sequences.py
+        ├── state_machine.py
+        ├── main_node.py              # Automat + serwisy + Action Server
+        ├── unitree_robot_api.py      # Adapter Unitree SDK 2
+        ├── offset_corrector.py
+        ├── robomvp_diagnostics.py    # DiagnosticArray (1 Hz)
+        ├── robomvp_odometry.py       # nav_msgs/Odometry dead reckoning (50 Hz)
+        ├── robomvp_tf_publisher.py   # Statyczne TF kamer
+        └── robomvp_teleop.py         # Sterowanie /cmd_vel
 ```
+
+---
+
+## Licencja
+
+Apache 2.0 — patrz plik `LICENSE`.
