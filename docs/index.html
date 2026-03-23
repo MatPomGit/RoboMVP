@@ -365,6 +365,216 @@
       .hero, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
       main { padding: 18px; }
     }
+
+    /* ═══════════════════════════════════════════════════
+       SYSTEM KROKÓW – KOLORYSTYCZNY PODZIAŁ DYDAKTYCZNY
+       ═══════════════════════════════════════════════════ */
+
+    :root {
+      --step1: #3b82f6;
+      --step2: #a855f7;
+      --step3: #22c55e;
+      --step4: #f97316;
+      --step5: #eab308;
+      --step6: #14b8a6;
+    }
+
+    /* Nagłówek grupy w nawigacji bocznej */
+    .nav-group-label {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      padding: 10px 12px 3px;
+      margin-top: 4px;
+    }
+
+    .nav-s1 { color: #93c5fd; }
+    .nav-s2 { color: #d8b4fe; }
+    .nav-s3 { color: #86efac; }
+    .nav-s4 { color: #fdba74; }
+    .nav-s5 { color: #fde047; }
+    .nav-s6 { color: #5eead4; }
+
+    /* Kolorowy separator kroku widoczny między sekcjami */
+    .step-divider {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 20px 24px;
+      margin: 40px 0 -8px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.07);
+    }
+
+    .step-num-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .step-divider .sd-body h3 {
+      margin: 0 0 5px;
+      font-size: 1.1rem;
+      line-height: 1.2;
+    }
+
+    .step-divider .sd-body p {
+      margin: 0 0 8px;
+      font-size: .9rem;
+      color: var(--muted);
+      max-width: 85ch;
+    }
+
+    .step-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .step-chip {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .77rem;
+      font-weight: 600;
+    }
+
+    /* Krok 1 – niebieski */
+    .sd1 { background: rgba(59,130,246,.1); border-left: 5px solid var(--step1); }
+    .sd1 .step-num-box { background: var(--step1); }
+    .sd1 .sd-body h3 { color: #93c5fd; }
+    .sd1 .step-chip { background: rgba(59,130,246,.18); color: #93c5fd; }
+    .s1.card { border-top: 3px solid var(--step1); }
+    .s1 .eyebrow { color: #93c5fd; }
+
+    /* Krok 2 – fioletowy */
+    .sd2 { background: rgba(168,85,247,.1); border-left: 5px solid var(--step2); }
+    .sd2 .step-num-box { background: var(--step2); }
+    .sd2 .sd-body h3 { color: #d8b4fe; }
+    .sd2 .step-chip { background: rgba(168,85,247,.18); color: #d8b4fe; }
+    .s2.card { border-top: 3px solid var(--step2); }
+    .s2 .eyebrow { color: #d8b4fe; }
+
+    /* Krok 3 – zielony */
+    .sd3 { background: rgba(34,197,94,.1); border-left: 5px solid var(--step3); }
+    .sd3 .step-num-box { background: var(--step3); }
+    .sd3 .sd-body h3 { color: #86efac; }
+    .sd3 .step-chip { background: rgba(34,197,94,.18); color: #86efac; }
+    .s3.card { border-top: 3px solid var(--step3); }
+    .s3 .eyebrow { color: #86efac; }
+
+    /* Krok 4 – pomarańczowy */
+    .sd4 { background: rgba(249,115,22,.1); border-left: 5px solid var(--step4); }
+    .sd4 .step-num-box { background: var(--step4); }
+    .sd4 .sd-body h3 { color: #fdba74; }
+    .sd4 .step-chip { background: rgba(249,115,22,.18); color: #fdba74; }
+    .s4.card { border-top: 3px solid var(--step4); }
+    .s4 .eyebrow { color: #fdba74; }
+
+    /* Krok 5 – bursztynowy */
+    .sd5 { background: rgba(234,179,8,.1); border-left: 5px solid var(--step5); }
+    .sd5 .step-num-box { background: var(--step5); }
+    .sd5 .sd-body h3 { color: #fde047; }
+    .sd5 .step-chip { background: rgba(234,179,8,.18); color: #fde047; }
+    .s5.card { border-top: 3px solid var(--step5); }
+    .s5 .eyebrow { color: #fde047; }
+
+    /* Krok 6 – turkusowy */
+    .sd6 { background: rgba(20,184,166,.1); border-left: 5px solid var(--step6); }
+    .sd6 .step-num-box { background: var(--step6); }
+    .sd6 .sd-body h3 { color: #5eead4; }
+    .sd6 .step-chip { background: rgba(20,184,166,.18); color: #5eead4; }
+    .s6.card { border-top: 3px solid var(--step6); }
+    .s6 .eyebrow { color: #5eead4; }
+
+    /* Siatka mapy kroków na górze strony */
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin: 18px 0 4px;
+    }
+
+    @media (max-width: 1200px) { .pipeline-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .pipeline-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .pc {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 14px 8px;
+      border-radius: 14px;
+      text-decoration: none;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,.08);
+      transition: transform .15s, filter .15s;
+    }
+
+    .pc:hover { transform: translateY(-3px); filter: brightness(1.2); }
+
+    .pc-num {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .pc-lbl { font-size: .8rem; font-weight: 700; line-height: 1.3; }
+
+    .pc1 { background: rgba(59,130,246,.1); }
+    .pc1 .pc-num { background: var(--step1); }
+    .pc1 .pc-lbl { color: #93c5fd; }
+
+    .pc2 { background: rgba(168,85,247,.1); }
+    .pc2 .pc-num { background: var(--step2); }
+    .pc2 .pc-lbl { color: #d8b4fe; }
+
+    .pc3 { background: rgba(34,197,94,.1); }
+    .pc3 .pc-num { background: var(--step3); }
+    .pc3 .pc-lbl { color: #86efac; }
+
+    .pc4 { background: rgba(249,115,22,.1); }
+    .pc4 .pc-num { background: var(--step4); }
+    .pc4 .pc-lbl { color: #fdba74; }
+
+    .pc5 { background: rgba(234,179,8,.1); }
+    .pc5 .pc-num { background: var(--step5); }
+    .pc5 .pc-lbl { color: #fde047; }
+
+    .pc6 { background: rgba(20,184,166,.1); }
+    .pc6 .pc-num { background: var(--step6); }
+    .pc6 .pc-lbl { color: #5eead4; }
+
+    /* Kolorowe stany automatu stanowego FSM */
+    .fsm-s0 { border-left: 4px solid var(--step1); }
+    .fsm-s0 small { color: #93c5fd; }
+    .fsm-s1 { border-left: 4px solid var(--step2); }
+    .fsm-s1 small { color: #d8b4fe; }
+    .fsm-s2 { border-left: 4px solid var(--step3); }
+    .fsm-s2 small { color: #86efac; }
+    .fsm-s3 { border-left: 4px solid var(--step4); }
+    .fsm-s3 small { color: #fdba74; }
+    .fsm-s4 { border-left: 4px solid var(--step5); }
+    .fsm-s4 small { color: #fde047; }
+    .fsm-s5 { border-left: 4px solid var(--step6); }
+    .fsm-s5 small { color: #5eead4; }
+    .fsm-s6 { border-left: 4px solid var(--warn); }
+    .fsm-s6 small { color: var(--warn); }
+    .fsm-s7 { border-left: 4px solid var(--ok); }
+    .fsm-s7 small { color: var(--ok); }
   </style>
 </head>
 <body>
@@ -380,18 +590,26 @@
 
       <nav>
         <a href="#overview">Przegląd</a>
+        <a href="#pipeline"><span aria-hidden="true">🗺</span> Mapa kroków</a>
+        <div class="nav-group-label nav-s1">● Krok 1 · Wymagania</div>
         <a href="#requirements">Sprzęt i wymagania</a>
         <a href="#safety">Bezpieczeństwo i checklista</a>
+        <div class="nav-group-label nav-s2">● Krok 2 · Instalacja</div>
         <a href="#repo">Repozytorium i konfiguracja</a>
         <a href="#install">Instalacja</a>
+        <div class="nav-group-label nav-s3">● Krok 3 · Uruchomienie</div>
         <a href="#run">Uruchomienie</a>
+        <div class="nav-group-label nav-s4">● Krok 4 · Architektura</div>
         <a href="#architecture">Architektura ROS2</a>
         <a href="#nodes">Węzły</a>
         <a href="#fsm">Automat stanowy</a>
+        <div class="nav-group-label nav-s5">● Krok 5 · Sterowanie</div>
         <a href="#ops">Sterowanie operatorskie</a>
         <a href="#recovery">Procedury odzyskiwania</a>
         <a href="#monitoring">Monitoring i debug</a>
+        <div class="nav-group-label nav-s6">● Krok 6 · Kalibracja</div>
         <a href="#calibration">Kalibracja kamer</a>
+        <a href="#health">Gotowość systemu</a>
         <a href="#glossary">Słownik pojęć</a>
       </nav>
       <p class="small" style="margin-top:18px;">Strona została zaprojektowana jako samowystarczalny pojedynczy plik HTML z interaktywnymi sekcjami, filtrami i kopiowaniem komend.</p>
@@ -432,10 +650,63 @@
         </div>
       </section>
 
-      <section id="requirements" class="card section searchable">
+      <!-- ─────────── MAPA KROKÓW ─────────── -->
+      <section id="pipeline" class="card section searchable">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 2</div>
+            <div class="eyebrow">Ścieżka wdrożenia</div>
+            <h2>6 kroków do uruchomienia RoboMVP</h2>
+          </div>
+        </div>
+        <p class="lead">Poniższe karty reprezentują kolejne etapy pracy z systemem. Każdy krok jest wyróżniony unikalnym kolorem, który pojawia się konsekwentnie w całej dokumentacji – w nagłówkach sekcji, oznaczeniach bocznego paska i komentarzach. Postępuj zgodnie z kolejnością: pominięcie lub zamiana kroków zazwyczaj objawia się dopiero na etapie uruchomienia, co znacząco utrudnia diagnozę.</p>
+        <div class="pipeline-grid">
+          <a class="pc pc1" href="#requirements">
+            <div class="pc-num">1</div>
+            <div class="pc-lbl">Wymagania i bezpieczeństwo</div>
+          </a>
+          <a class="pc pc2" href="#repo">
+            <div class="pc-num">2</div>
+            <div class="pc-lbl">Konfiguracja i instalacja</div>
+          </a>
+          <a class="pc pc3" href="#run">
+            <div class="pc-num">3</div>
+            <div class="pc-lbl">Uruchomienie systemu</div>
+          </a>
+          <a class="pc pc4" href="#architecture">
+            <div class="pc-num">4</div>
+            <div class="pc-lbl">Architektura i scenariusz</div>
+          </a>
+          <a class="pc pc5" href="#ops">
+            <div class="pc-num">5</div>
+            <div class="pc-lbl">Sterowanie i monitoring</div>
+          </a>
+          <a class="pc pc6" href="#calibration">
+            <div class="pc-num">6</div>
+            <div class="pc-lbl">Kalibracja i odzyskiwanie</div>
+          </a>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════ KROK 1 ═══════════════════════════════ -->
+      <div class="step-divider sd1">
+        <div class="step-num-box">1</div>
+        <div class="sd-body">
+          <h3>Krok 1 – Wymagania i bezpieczeństwo</h3>
+          <p>Zanim uruchomisz system, upewnij się, że dysponujesz wymaganym sprzętem, oprogramowaniem i warunkami bezpieczeństwa. Robot Unitree G1 EDU waży ~35 kg i może poruszać się z prędkością kilku metrów na sekundę – nieprzestrzeganie zasad bezpieczeństwa grozi uszkodzeniem sprzętu lub obrażeniami. Ten krok jest obowiązkowy i nie podlega skróceniu.</p>
+          <div class="step-chips">
+            <span class="step-chip">Unitree G1 EDU</span>
+            <span class="step-chip">Ubuntu 22.04</span>
+            <span class="step-chip">ROS2 Humble</span>
+            <span class="step-chip">AprilTag</span>
+            <span class="step-chip">Ethernet 1 Gbit</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="requirements" class="card section searchable s1">
+        <div class="section-header">
+          <div>
+            <div class="eyebrow">Krok 1 · Sekcja A</div>
             <h2>Sprzęt i wymagania systemowe</h2>
           </div>
         </div>
@@ -455,10 +726,10 @@
         </div>
       </section>
 
-      <section id="safety" class="card section searchable">
+      <section id="safety" class="card section searchable s1">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Nowa sekcja</div>
+            <div class="eyebrow">Krok 1 · Sekcja B</div>
             <h2>Bezpieczeństwo i checklista przed startem</h2>
           </div>
         </div>
@@ -493,10 +764,27 @@
         </div>
       </section>
 
-      <section id="repo" class="card section searchable">
+      <!-- ═══════════════════════════════ KROK 2 ═══════════════════════════════ -->
+      <div class="step-divider sd2">
+        <div class="step-num-box">2</div>
+        <div class="sd-body">
+          <h3>Krok 2 – Konfiguracja i instalacja środowiska</h3>
+          <p>Sklonuj repozytorium, zainstaluj ROS2 Humble wraz z zależnościami Python oraz zbuduj workspace Colcon. Zrozum strukturę plików konfiguracyjnych – błędne wartości w <code>camera.yaml</code> lub <code>scene.yaml</code> spowodują niepoprawne estymacje pozycji markerów i błędy automatu stanowego, które trudno zdiagnozować bez znajomości tych plików.</p>
+          <div class="step-chips">
+            <span class="step-chip">colcon build</span>
+            <span class="step-chip">rosdep</span>
+            <span class="step-chip">pip install</span>
+            <span class="step-chip">camera.yaml</span>
+            <span class="step-chip">scene.yaml</span>
+            <span class="step-chip">demo.launch.py</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="repo" class="card section searchable s2">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Nowa sekcja</div>
+            <div class="eyebrow">Krok 2 · Sekcja A</div>
             <h2>Repozytorium, pliki konfiguracyjne i konwencje sceny</h2>
           </div>
         </div>
@@ -534,10 +822,10 @@
         </div>
       </section>
 
-      <section id="install" class="card section searchable">
+      <section id="install" class="card section searchable s2">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 3</div>
+            <div class="eyebrow">Krok 2 · Sekcja B</div>
             <h2>Instalacja krok po kroku</h2>
           </div>
         </div>
@@ -582,10 +870,26 @@ echo "source ~/RoboMVP/ros2_ws/install/setup.bash" &gt;&gt; ~/.bashrc</div>
         </div>
       </section>
 
-      <section id="run" class="card section searchable">
+      <!-- ═══════════════════════════════ KROK 3 ═══════════════════════════════ -->
+      <div class="step-divider sd3">
+        <div class="step-num-box">3</div>
+        <div class="sd-body">
+          <h3>Krok 3 – Uruchomienie i weryfikacja systemu</h3>
+          <p>Uruchom system plikiem <code>demo.launch.py</code>, zweryfikuj połączenie sieciowe z robotem, a następnie sprawdź, że wszystkie węzły ROS2 są aktywne i kamery publikują obrazy. Diagnostyki nie powinny sygnalizować stanu STALE. Dopiero po przejściu tej weryfikacji system jest gotowy do demonstracji.</p>
+          <div class="step-chips">
+            <span class="step-chip">demo.launch.py</span>
+            <span class="step-chip">ros2 node list</span>
+            <span class="step-chip">ping 192.168.123.161</span>
+            <span class="step-chip">diagnostyki OK</span>
+            <span class="step-chip">obrazy kamer</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="run" class="card section searchable s3">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 4</div>
+            <div class="eyebrow">Krok 3 · Sekcja A</div>
             <h2>Uruchomienie systemu</h2>
           </div>
         </div>
@@ -630,10 +934,27 @@ ros2 launch robomvp demo.launch.py \
         </details>
       </section>
 
-      <section id="architecture" class="card section searchable">
+      <!-- ═══════════════════════════════ KROK 4 ═══════════════════════════════ -->
+      <div class="step-divider sd4">
+        <div class="step-num-box">4</div>
+        <div class="sd-body">
+          <h3>Krok 4 – Architektura i przebieg scenariusza demonstracyjnego</h3>
+          <p>Zrozum, jak węzły ROS2 komunikują się wzajemnie przez tematy, serwisy, Action Server i drzewo TF. Automat stanowy (FSM) determinuje kolejność wszystkich akcji robota – każdy z 8 stanów ma precyzyjne warunki przejścia. Znajomość tej sekcji pozwala diagnozować błędy logiki w trakcie demonstracji bez konieczności przeglądania kodu źródłowego.</p>
+          <div class="step-chips">
+            <span class="step-chip">FSM · 8 stanów</span>
+            <span class="step-chip">Action Server</span>
+            <span class="step-chip">TF2</span>
+            <span class="step-chip">8 węzłów ROS2</span>
+            <span class="step-chip">15 tematów</span>
+            <span class="step-chip">Dead reckoning</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="architecture" class="card section searchable s4">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 5</div>
+            <div class="eyebrow">Krok 4 · Sekcja A</div>
             <h2>Architektura ROS2</h2>
           </div>
         </div>
@@ -682,10 +1003,10 @@ ros2 launch robomvp demo.launch.py \
         </div>
       </section>
 
-      <section id="nodes" class="card section searchable">
+      <section id="nodes" class="card section searchable s4">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 6</div>
+            <div class="eyebrow">Krok 4 · Sekcja B</div>
             <h2>Szczegółowy opis węzłów</h2>
           </div>
         </div>
@@ -699,29 +1020,46 @@ ros2 launch robomvp demo.launch.py \
         <details><summary>robomvp_teleop</summary><p class="muted">Subskrybuje <code>/cmd_vel</code> i przekazuje komendy do LocoClient.SetVelocity. Działa tylko przy <code>enabled:=true</code> i gdy scenariusz nie jest w toku. Watchdog 0.5 s zatrzymuje robota przy utracie komend.</p></details>
       </section>
 
-      <section id="fsm" class="card section searchable">
+      <section id="fsm" class="card section searchable s4">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 7</div>
+            <div class="eyebrow">Krok 4 · Sekcja C</div>
             <h2>Automat stanowy – przebieg scenariusza</h2>
           </div>
         </div>
         <div class="timeline">
-          <div class="step"><small>Stan 0</small><h3>SEARCH_TABLE</h3><p>Robot szuka markera stołu startowego. Przejście po wykryciu ID=21 lub po timeout 20 s.</p></div>
-          <div class="step"><small>Stan 1</small><h3>DETECT_MARKER</h3><p>Podejście do stołu i szukanie markera pudełka. Akcja: <strong>approach_table</strong>.</p></div>
-          <div class="step"><small>Stan 2</small><h3>ALIGN_WITH_BOX</h3><p>Wyrównanie względem pudełka na podstawie offsetu. Warunek: |dx| i |dz| &lt; 0.05 m lub timeout 10 s.</p></div>
-          <div class="step"><small>Stan 3</small><h3>PICK_BOX</h3><p>Sekwencja podniesienia pudełka. Stan czeka na <code>notify_sequence_done()</code>.</p></div>
-          <div class="step"><small>Stan 4</small><h3>ROTATE_180</h3><p>Obrót o 180° z pudełkiem, podzielony na dwa kroki po 90° dla bezpieczeństwa.</p></div>
-          <div class="step"><small>Stan 5</small><h3>NAVIGATE_TO_TARGET_MARKER</h3><p>Marsz do drugiego stołu. Przejście po wykryciu markera docelowego i osiągnięciu odległości &lt; 0.3 m albo po timeout 25 s.</p></div>
-          <div class="step"><small>Stan 6</small><h3>PLACE_BOX</h3><p>Odłożenie pudełka. Stan sekwencyjny, również czeka na potwierdzenie zakończenia sekwencji.</p></div>
-          <div class="step"><small>Stan 7</small><h3>FINISHED</h3><p>Scenariusz zakończony. Powrót do początku przez serwis <code>/robomvp/reset</code>.</p></div>
+          <div class="step fsm-s0"><small>Stan 0</small><h3>SEARCH_TABLE</h3><p>Robot obraca się i skanuje otoczenie, szukając markera stołu startowego (ID=21). Przejście następuje po wykryciu markera lub po timeout 20 s. <em>Jest to punkt startowy każdego cyklu demonstracyjnego.</em></p></div>
+          <div class="step fsm-s1"><small>Stan 1</small><h3>DETECT_MARKER</h3><p>Robot podchodzi do stołu i szuka markera pudełka (ID=10). Akcja: <strong>approach_table</strong>. <em>Jeśli marker pudełka nie jest widoczny z pozycji startowej, robot musi być bliżej.</em></p></div>
+          <div class="step fsm-s2"><small>Stan 2</small><h3>ALIGN_WITH_BOX</h3><p>Wyrównanie pozycji robota względem pudełka na podstawie offsetu z estymatora pozycji. Warunek przejścia: |dx| i |dz| &lt; 0.05 m lub timeout 10 s. <em>Błędy kalibracji kamery dają o sobie znać właśnie w tym stanie.</em></p></div>
+          <div class="step fsm-s3"><small>Stan 3</small><h3>PICK_BOX</h3><p>Sekwencja podniesienia pudełka wykonywana przez ramię. Stan czeka na <code>notify_sequence_done()</code> z Action Servera. <em>Fizyczna sekwencja ruchów ramienia jest zdefiniowana w motion_sequences.</em></p></div>
+          <div class="step fsm-s4"><small>Stan 4</small><h3>ROTATE_180</h3><p>Obrót o 180° z pudełkiem w rękach, podzielony na dwa kroki po 90° dla stabilności. <em>Podwójny obrót zmniejsza ryzyko utraty równowagi przy niesymetrycznym obciążeniu.</em></p></div>
+          <div class="step fsm-s5"><small>Stan 5</small><h3>NAVIGATE_TO_TARGET_MARKER</h3><p>Marsz do drugiego stołu. Przejście po wykryciu markera docelowego (ID=22 lub ID=30) i osiągnięciu odległości &lt; 0.3 m albo po timeout 25 s. <em>Dead-reckoning odometry pomaga przy chwilowej utracie widoczności markera.</em></p></div>
+          <div class="step fsm-s6"><small>Stan 6</small><h3>PLACE_BOX</h3><p>Odłożenie pudełka na stół docelowy. Stan sekwencyjny, czeka na potwierdzenie zakończenia sekwencji. <em>Po zakończeniu pudełko powinno leżeć stabilnie w obrębie stołu.</em></p></div>
+          <div class="step fsm-s7"><small>Stan 7</small><h3>FINISHED</h3><p>Scenariusz zakończony sukcesem. Robot pozostaje w miejscu. Powrót do początku następuje przez serwis <code>/robomvp/reset</code>. <em>Reset przywraca stan SEARCH_TABLE i pozwala rozpocząć kolejny cykl.</em></p></div>
         </div>
       </section>
 
-      <section id="ops" class="card section searchable">
+      <!-- ═══════════════════════════════ KROK 5 ═══════════════════════════════ -->
+      <div class="step-divider sd5">
+        <div class="step-num-box">5</div>
+        <div class="sd-body">
+          <h3>Krok 5 – Sterowanie operatorskie i monitoring</h3>
+          <p>Zapoznaj się z serwisami operatorskimi (pause, reset, emergency stop) oraz narzędziami do monitorowania stanu systemu w czasie rzeczywistym. W trakcie demonstracji operator musi natychmiastowo reagować na anomalie – sprawna obsługa procedur tego kroku pozwala unikać uszkodzeń sprzętu i skracać czas przestojów po incydencie.</p>
+          <div class="step-chips">
+            <span class="step-chip">/robomvp/pause</span>
+            <span class="step-chip">/robomvp/reset</span>
+            <span class="step-chip">emergency_stop</span>
+            <span class="step-chip">rqt_graph</span>
+            <span class="step-chip">ros2 topic echo</span>
+            <span class="step-chip">RViz2</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="ops" class="card section searchable s5">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 8</div>
+            <div class="eyebrow">Krok 5 · Sekcja A</div>
             <h2>Sterowanie operatorskie</h2>
           </div>
         </div>
@@ -749,10 +1087,10 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard</div>
         </div>
       </section>
 
-      <section id="recovery" class="card section searchable">
+      <section id="recovery" class="card section searchable s5">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Nowa sekcja</div>
+            <div class="eyebrow">Krok 5 · Sekcja B</div>
             <h2>Procedury odzyskiwania i wznowienia pracy</h2>
           </div>
         </div>
@@ -777,10 +1115,10 @@ ros2 launch robomvp demo.launch.py network_interface:=eth0 require_robot_connect
         </div>
       </section>
 
-      <section id="monitoring" class="card section searchable">
+      <section id="monitoring" class="card section searchable s5">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 9</div>
+            <div class="eyebrow">Krok 5 · Sekcja C</div>
             <h2>Monitoring i debugowanie</h2>
           </div>
         </div>
@@ -820,10 +1158,26 @@ ros2 topic echo /odom --field pose.pose.position</div>
         </div>
       </section>
 
-      <section id="calibration" class="card section searchable">
+      <!-- ═══════════════════════════════ KROK 6 ═══════════════════════════════ -->
+      <div class="step-divider sd6">
+        <div class="step-num-box">6</div>
+        <div class="sd-body">
+          <h3>Krok 6 – Kalibracja kamer i diagnostyka gotowości</h3>
+          <p>Dokładność estymacji pozycji markera zależy bezpośrednio od parametrów kamery. Domyślne przybliżone wartości mogą generować błąd rzędu 15% – to wystarczy, aby wyrównanie ramienia w stanie ALIGN_WITH_BOX zakończyło się niepowodzeniem. Kalibracja tablicowa eliminuje ten błąd. Diagnostyki READY/DEGRADED/STALE pozwalają ocenić kompletność systemu przed uruchomieniem scenariusza.</p>
+          <div class="step-chips">
+            <span class="step-chip">camera_calibration</span>
+            <span class="step-chip">fx, fy, cx, cy</span>
+            <span class="step-chip">k1, k2, p1, p2</span>
+            <span class="step-chip">diagnostyki READY</span>
+            <span class="step-chip">STALE → interwencja</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="calibration" class="card section searchable s6">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 10</div>
+            <div class="eyebrow">Krok 6 · Sekcja A</div>
             <h2>Kalibracja kamer</h2>
           </div>
         </div>
@@ -837,10 +1191,10 @@ ros2 run camera_calibration cameracalibrator \
         <div class="notice warn">Po zmianie parametrów przebuduj pakiet, aby nowe wartości zostały zainstalowane w <code>share/robomvp/config/camera.yaml</code>.</div>
       </section>
 
-      <section id="health" class="card section searchable">
+      <section id="health" class="card section searchable s6">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Nowa sekcja</div>
+            <div class="eyebrow">Krok 6 · Sekcja B</div>
             <h2>Gotowość systemu i interpretacja diagnostyk</h2>
           </div>
         </div>
@@ -855,7 +1209,7 @@ ros2 run camera_calibration cameracalibrator \
       <section id="glossary" class="card section searchable">
         <div class="section-header">
           <div>
-            <div class="eyebrow">Sekcja 11</div>
+            <div class="eyebrow">Sekcja referencyjna</div>
             <h2>Słownik pojęć</h2>
           </div>
         </div>
