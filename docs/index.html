@@ -575,6 +575,187 @@
     .fsm-s6 small { color: var(--warn); }
     .fsm-s7 { border-left: 4px solid var(--ok); }
     .fsm-s7 small { color: var(--ok); }
+
+    /* ═══════════════════════════════════════════════════
+       TRYB OPERATORA – PANEL OPERATORSKI
+       ═══════════════════════════════════════════════════ */
+
+    /* Status pill indicators */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      font-size: .9rem;
+      margin: 0 6px 6px 0;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warn);
+      flex-shrink: 0;
+    }
+
+    .status-ready .status-dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(41,195,122,.18); }
+    .status-warn  .status-dot { background: var(--warn); box-shadow: 0 0 0 3px rgba(255,184,77,.18); }
+    .status-stop  .status-dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(255,107,107,.18); }
+
+    /* Operator action buttons */
+    .op-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: .2s ease;
+      font-family: inherit;
+    }
+
+    .op-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.2); background: rgba(255,255,255,.07); }
+    .op-btn strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+    .op-btn.safe { border-color: rgba(41,195,122,.28); }
+    .op-btn.safe:hover { background: rgba(41,195,122,.08); }
+    .op-btn.warn { border-color: rgba(255,184,77,.28); }
+    .op-btn.warn:hover { background: rgba(255,184,77,.08); }
+    .op-btn.danger { border-color: rgba(255,107,107,.38); background: rgba(255,107,107,.07); }
+    .op-btn.danger:hover { background: rgba(255,107,107,.13); }
+
+    .op-action-hint {
+      display: block;
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    /* Grid for operator action buttons */
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 12px;
+    }
+
+    @media (max-width:1100px) { .button-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Animated badge for operator mode header */
+    .op-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(251,146,60,.14);
+      color: #fb923c;
+      border: 1px solid rgba(251,146,60,.26);
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .op-pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #fb923c;
+      animation: op-blink 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes op-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.22; }
+    }
+
+    /* Eyebrow label color override for operator sections */
+    .op-eyebrow { color: #fb923c !important; }
+
+    /* Colored KPI card variants */
+    .op-kpi-ok   { border-color: rgba(41,195,122,.32) !important; background: rgba(41,195,122,.06) !important; }
+    .op-kpi-warn { border-color: rgba(255,184,77,.32)  !important; background: rgba(255,184,77,.06)  !important; }
+    .op-kpi-err  { border-color: rgba(255,107,107,.32) !important; background: rgba(255,107,107,.06) !important; }
+    .op-kpi-ok   strong { color: var(--ok); }
+    .op-kpi-warn strong { color: var(--warn); }
+    .op-kpi-err  strong { color: var(--danger); }
+
+    /* Interactive FSM grid in operator mode */
+    .op-fsm-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    @media (max-width:1100px) { .op-fsm-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .op-state-box {
+      padding: 13px;
+      border-radius: 13px;
+      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.03);
+      cursor: pointer;
+      transition: .15s ease;
+      user-select: none;
+    }
+
+    .op-state-box:hover { filter: brightness(1.25); }
+
+    .op-state-box .op-snum {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .op-state-box.op-state-active {
+      border-color: rgba(251,146,60,.48) !important;
+      background: rgba(251,146,60,.11) !important;
+    }
+
+    .op-state-box.op-state-done {
+      border-color: rgba(41,195,122,.30) !important;
+      background: rgba(41,195,122,.06) !important;
+    }
+
+    /* Per-state accent colors matching step colors in main doc */
+    .op-st-0 .op-snum { color: #93c5fd; }
+    .op-st-1 .op-snum { color: #d8b4fe; }
+    .op-st-2 .op-snum { color: #86efac; }
+    .op-st-3 .op-snum { color: #fdba74; }
+    .op-st-4 .op-snum { color: #fde047; }
+    .op-st-5 .op-snum { color: #5eead4; }
+    .op-st-6 .op-snum { color: var(--warn); }
+    .op-st-7 .op-snum { color: var(--ok); }
+
+    /* Operator session log */
+    .op-log {
+      background: #070e17;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 190px;
+      max-height: 280px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .84rem;
+      line-height: 1.55;
+    }
+
+    .op-log-line           { margin: 0 0 4px; color: #cdd9ff; }
+    .op-log-line .ts       { color: var(--muted); margin-right: 8px; }
+    .op-log-line.lvl-ok   .ts { color: var(--ok); }
+    .op-log-line.lvl-warn .ts { color: var(--warn); }
+    .op-log-line.lvl-err  .ts { color: var(--danger); }
   </style>
 </head>
 <body>
@@ -611,6 +792,8 @@
         <a href="#calibration">Kalibracja kamer</a>
         <a href="#health">Gotowość systemu</a>
         <a href="#glossary">Słownik pojęć</a>
+        <div class="nav-group-label" style="color:#fb923c;">● Tryb operatora</div>
+        <a href="#operator-mode">Konsola operatora</a>
       </nav>
       <p class="small" style="margin-top:18px;">Strona została zaprojektowana jako samowystarczalny pojedynczy plik HTML z interaktywnymi sekcjami, filtrami i kopiowaniem komend.</p>
     </aside>
@@ -1158,6 +1341,300 @@ ros2 topic echo /odom --field pose.pose.position</div>
         </div>
       </section>
 
+      <!-- ══════════════════════════ TRYB OPERATORA ══════════════════════════ -->
+      <div class="step-divider" style="background:rgba(251,146,60,.08);border-left:5px solid #fb923c;margin-top:40px;">
+        <div class="step-num-box" style="background:#fb923c;font-size:1.1rem;">⚙</div>
+        <div class="sd-body">
+          <h3 style="color:#fed7aa;">Tryb operatora – Konsola zarządzania demonstracją</h3>
+          <p>Interaktywny panel operatorski do prowadzenia sesji demo. Zawiera checklistę pre-flight, szybkie akcje operatorskie, interaktywną mapę FSM, referencję komend ROS2 i dziennik sesji. Panel nie steruje robotem bezpośrednio – dostarcza ustrukturyzowany interfejs pracy operatora i gotowe komendy terminala.</p>
+          <div class="step-chips">
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">Dashboard</span>
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">Pre-flight</span>
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">Runbook</span>
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">E-stop</span>
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">Mapa FSM</span>
+            <span class="step-chip" style="background:rgba(251,146,60,.16);color:#fed7aa;">Dziennik</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="operator-mode" class="card section searchable" style="border-top:3px solid #fb923c;">
+
+        <!-- ── HEADER ── -->
+        <div style="margin-bottom:22px;">
+          <div class="op-badge"><span class="op-pulse"></span>TRYB OPERATORA · KONSOLA DEMO</div>
+          <div class="eyebrow op-eyebrow">Panel operatorski</div>
+          <h2 style="margin:0 0 8px;">Konsola zarządzania demonstracją</h2>
+          <p class="lead" style="margin:0;">Interaktywny interfejs operatorski do prowadzenia sesji demo. Sekcja porządkuje procedurę: od checklisty pre-flight, przez szybkie akcje i monitorowanie FSM, po dziennik operatorski i referencję komend. <strong>Nie steruje robotem bezpośrednio</strong> – dostarcza gotowe komendy do użycia w terminalu ROS2 i wytyczne reagowania na zdarzenia.</p>
+        </div>
+
+        <!-- ── STATUS DASHBOARD ── -->
+        <div class="hero" style="margin-bottom:22px;">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="padding:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+              <div class="eyebrow op-eyebrow">Stan systemu w czasie sesji</div>
+              <p class="muted" style="font-size:.88rem;margin:0 0 10px;">Wskaźniki poniżej są orientacyjne – operator weryfikuje je ręcznie po każdym starcie launch.</p>
+              <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;">
+                <span class="pill status-ready" title="Interfejs ROS2 dostępny po source install/setup.bash"><span class="status-dot"></span> ROS2: gotowy</span>
+                <span class="pill status-warn"  title="Sprawdź czy obie kamery publikują obrazy na swoich tematach"><span class="status-dot"></span> Kamery: sprawdzić</span>
+                <span class="pill status-warn"  title="Upewnij się że ID=10, 21, 22, 30 są widoczne i czytelne"><span class="status-dot"></span> Markery: sprawdzić</span>
+                <span class="pill status-stop"  title="Operator jest osobą pierwszego kontaktu przy zdarzeniach bezpieczeństwa"><span class="status-dot"></span> E-stop: operator</span>
+              </div>
+              <div class="grid-4">
+                <div class="kpi op-kpi-warn">
+                  <strong id="op-fsm-label">SEARCH_TABLE</strong>
+                  <div class="muted" style="font-size:.8rem;margin-top:3px;">Aktywny stan FSM</div>
+                </div>
+                <div class="kpi">
+                  <strong>Manual launch</strong>
+                  <div class="muted" style="font-size:.8rem;margin-top:3px;">Tryb uruchomienia</div>
+                </div>
+                <div class="kpi">
+                  <strong>Unitree G1 EDU</strong>
+                  <div class="muted" style="font-size:.8rem;margin-top:3px;">Platforma sprzętowa</div>
+                </div>
+                <div class="kpi">
+                  <strong>Wyłączony</strong>
+                  <div class="muted" style="font-size:.8rem;margin-top:3px;">Teleop (domyślnie)</div>
+                </div>
+              </div>
+            </div>
+            <div class="notice info" style="margin:0;">
+              <strong>Rola operatora:</strong> Obserwuj stan FSM, reaguj na timeouty i anomalie. Operator nie jest pasywnym widzem – to osoba pierwszego kontaktu przy zdarzeniach bezpieczeństwa i logicznych błędach scenariusza.
+            </div>
+          </div>
+          <div style="padding:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;display:flex;flex-direction:column;gap:14px;">
+            <div class="eyebrow op-eyebrow">Szybka decyzja gotowości</div>
+            <h3 style="margin:0;">Czy można zacząć demo?</h3>
+            <p class="muted" style="margin:0;font-size:.9rem;">Wypełnij checklistę pre-flight poniżej, a następnie użyj przycisku, by sprawdzić gotowość systemu do demonstracji. Zalecane minimum to 7 z 8 pozycji.</p>
+            <div id="op-readiness-box" class="notice warn" style="margin:0;">Niepełna gotowość. Uzupełnij checklistę pre-flight.</div>
+            <button class="op-btn safe" id="op-check-readiness-btn">
+              <strong>✔ Przelicz gotowość</strong>
+              <span class="op-action-hint">Sprawdza stan wszystkich elementów checklisty pre-flight poniżej.</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PRE-FLIGHT CHECKLIST ── -->
+        <div style="margin-bottom:22px;padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Checklista pre-flight</div>
+          <h3 style="margin:0 0 14px;">Weryfikacja przed uruchomieniem demonstracji</h3>
+          <div class="grid-2">
+            <div>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Sieć:</strong> Ethernet UP, ping 192.168.123.161 odpowiada, <code>network_interface</code> ustawiony poprawnie.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Środowisko:</strong> Workspace zbudowany, <code>source install/setup.bash</code> wykonane w bieżącym terminalu.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Kamery:</strong> Publikują obrazy na tematach lub świadomie ustawiono fallback <code>head_camera_device:=-1</code>.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Markery:</strong> ID=10, 21, 22, 30 obecne, czytelne i właściwie oświetlone (min. 300 lx).</span></label>
+            </div>
+            <div>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Scena:</strong> Strefa 1×4 m pusta, operator ma pełny widok na całą trasę robota.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Procedury:</strong> Znane komendy <code>pause</code>, <code>reset</code> i <code>emergency_stop</code> – operator jest gotowy do reakcji.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Robot:</strong> Stoi stabilnie, można bezpiecznie przejść do Sport Mode, serwomechanizmy uzbrojone.</span></label>
+              <label class="check"><input type="checkbox" class="op-preflight-item" /><span><strong>Węzły:</strong> Po starcie <code>ros2 node list</code> pokazuje komplet oczekiwanych węzłów ROS2.</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── RUNBOOK ── -->
+        <div style="margin-bottom:22px;padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Runbook demonstracji</div>
+          <h3 style="margin:0 0 14px;">Przebieg sesji demo w 3 fazach</h3>
+          <div class="grid-3">
+            <div class="kpi" style="border-left:3px solid var(--ok);">
+              <strong style="color:var(--ok);">1. Start i weryfikacja</strong>
+              <div class="muted" style="margin-top:6px;font-size:.88rem;">Uruchom launch, sprawdź obrazy kamer i stan diagnostyk. Upewnij się że <code>ros2 topic echo /robomvp/state</code> pokazuje <code>SEARCH_TABLE</code> i brak STALE w diagnostykach.</div>
+            </div>
+            <div class="kpi" style="border-left:3px solid var(--brand);">
+              <strong style="color:var(--brand);">2. Obserwacja sekwencji</strong>
+              <div class="muted" style="margin-top:6px;font-size:.88rem;">Śledź przejścia FSM: SEARCH_TABLE → DETECT_MARKER → ALIGN_WITH_BOX → PICK_BOX → ROTATE_180 → NAVIGATE → PLACE_BOX → FINISHED. Każde przejście potwierdza poprawność logiki i percepcji.</div>
+            </div>
+            <div class="kpi" style="border-left:3px solid var(--warn);">
+              <strong style="color:var(--warn);">3. Reagowanie i interwencja</strong>
+              <div class="muted" style="margin-top:6px;font-size:.88rem;">Przy odchyleniach użyj pause i popraw scenę. Przy utracie markera przywróć widoczność i resume. Przy zagrożeniu bezpieczeństwa natychmiast e-stop.</div>
+            </div>
+          </div>
+          <div class="notice info" style="margin-top:14px;">
+            <strong>Kluczowe punkty interwencji:</strong> Stan <strong>ALIGN_WITH_BOX</strong> (timeout 10 s, warunek |dx|,|dz|&lt;0.05 m) i stan <strong>NAVIGATE_TO_TARGET_MARKER</strong> (timeout 25 s) są najczęstszymi miejscami wymagającymi reakcji operatora. Wielokrotny timeout wskazuje na problemy z kalibracją kamery lub widocznością markerów.
+          </div>
+        </div>
+
+        <!-- ── QUICK ACTIONS ── -->
+        <div style="margin-bottom:22px;padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Szybkie akcje operatorskie</div>
+          <h3 style="margin:0 0 14px;">Gotowe komendy – kliknij, aby wybrać do kopiowania</h3>
+          <div class="button-grid">
+            <button class="op-btn safe" data-op-cmd="ros2 launch robomvp demo.launch.py network_interface:=eth0 require_robot_connection:=true">
+              <strong data-label="Start systemu">▶ Start systemu</strong>
+              <span class="op-action-hint">Uruchamia pełny launch z połączeniem do robota. Użyj po spełnieniu checklisty.</span>
+            </button>
+            <button class="op-btn warn" data-op-cmd='ros2 service call /robomvp/pause std_srvs/SetBool "{data: true}"'>
+              <strong data-label="Pause FSM">⏸ Pause FSM</strong>
+              <span class="op-action-hint">Wstrzymuje automat stanowy. Bezpieczna metoda przy korekcie sceny bez ryzyka ruchowego.</span>
+            </button>
+            <button class="op-btn safe" data-op-cmd='ros2 service call /robomvp/pause std_srvs/SetBool "{data: false}"'>
+              <strong data-label="Resume FSM">▶ Resume FSM</strong>
+              <span class="op-action-hint">Wznawia scenariusz po pauzie. Upewnij się że korekta sceny jest zakończona.</span>
+            </button>
+            <button class="op-btn danger" data-op-cmd='ros2 service call /robomvp/emergency_stop std_srvs/Trigger "{}"'>
+              <strong data-label="Emergency stop">⛔ Emergency stop</strong>
+              <span class="op-action-hint">Zatrzymuje robota i rozłącza SDK. Stosuj tylko przy realnym zagrożeniu.</span>
+            </button>
+            <button class="op-btn warn" data-op-cmd='ros2 service call /robomvp/reset std_srvs/Trigger "{}"'>
+              <strong data-label="Reset FSM">↺ Reset FSM</strong>
+              <span class="op-action-hint">Przywraca stan SEARCH_TABLE. Użyj po timeoucie lub po ustabilizowaniu sytuacji po e-stop.</span>
+            </button>
+            <button class="op-btn safe" data-op-cmd='ros2 action send_goal --feedback /robomvp/manipulation_task robomvp/action/ManipulationTask "{sequence_name: '"'"'pick_box'"'"', apply_offset: true}"'>
+              <strong data-label="Test PICK_BOX">✋ Test PICK_BOX</strong>
+              <span class="op-action-hint">Ręczne wywołanie sekwencji chwytu przez Action Server. Tylko do testowania izolowanego.</span>
+            </button>
+            <button class="op-btn safe" data-op-cmd="ros2 run teleop_twist_keyboard teleop_twist_keyboard">
+              <strong data-label="Teleop">🕹 Teleop</strong>
+              <span class="op-action-hint">Ręczne sterowanie prędkością przez /cmd_vel. Wymaga teleop_enabled:=true w launch.</span>
+            </button>
+            <button class="op-btn warn" data-op-cmd="ros2 topic echo /diagnostics">
+              <strong data-label="Diagnostyki">🔍 Diagnostyki</strong>
+              <span class="op-action-hint">Podgląd bieżącego health-checku. Szukaj statusów STALE lub ERROR w komponentach.</span>
+            </button>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="eyebrow op-eyebrow" style="font-size:.72rem;margin-bottom:6px;">Wybrana komenda</div>
+            <div class="code" style="min-height:46px;"><button class="copy-btn">Kopiuj</button><span id="op-selected-cmd">Kliknij przycisk akcji powyżej, aby wstawić gotową komendę ROS2.</span></div>
+          </div>
+        </div>
+
+        <!-- ── FSM STATE MAP ── -->
+        <div style="margin-bottom:22px;padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Interaktywna mapa FSM</div>
+          <h3 style="margin:0 0 6px;">Stany automatu i punkty decyzyjne operatora</h3>
+          <p class="muted" style="margin:0 0 14px;font-size:.9rem;">Kliknij dowolny stan lub użyj selektora, aby zasymulować aktywną pozycję w sekwencji. Kolory stanów są zgodne z kodowaniem kolorystycznym reszty dokumentacji.</p>
+          <div class="op-fsm-grid">
+            <div class="op-state-box op-st-0 op-state-active" data-op-state="SEARCH_TABLE">
+              <div class="op-snum">Stan 0</div>
+              <strong>SEARCH_TABLE</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Skanuj, szukaj ID=21. Timeout: 20 s. Punkt startowy każdego cyklu.</div>
+            </div>
+            <div class="op-state-box op-st-1" data-op-state="DETECT_MARKER">
+              <div class="op-snum">Stan 1</div>
+              <strong>DETECT_MARKER</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Podejście do stołu, szukaj ID=10. Akcja: approach_table.</div>
+            </div>
+            <div class="op-state-box op-st-2" data-op-state="ALIGN_WITH_BOX">
+              <div class="op-snum">Stan 2 ⚠</div>
+              <strong>ALIGN_WITH_BOX</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Wyrównanie |dx|,|dz|&lt;5 cm. Timeout: 10 s. Częsty punkt interwencji.</div>
+            </div>
+            <div class="op-state-box op-st-3" data-op-state="PICK_BOX">
+              <div class="op-snum">Stan 3</div>
+              <strong>PICK_BOX</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Sekwencja chwytu pudełka przez Action Server (motion_sequences).</div>
+            </div>
+            <div class="op-state-box op-st-4" data-op-state="ROTATE_180">
+              <div class="op-snum">Stan 4</div>
+              <strong>ROTATE_180</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Obrót 2×90° z pudełkiem. Dzielony dla stabilności przy obciążeniu.</div>
+            </div>
+            <div class="op-state-box op-st-5" data-op-state="NAVIGATE_TO_TARGET_MARKER">
+              <div class="op-snum">Stan 5 ⚠</div>
+              <strong>NAVIGATE</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Marsz do ID=22/30, odl.&lt;0.3 m. Timeout: 25 s. Dead-reckoning wsparcie.</div>
+            </div>
+            <div class="op-state-box op-st-6" data-op-state="PLACE_BOX">
+              <div class="op-snum">Stan 6</div>
+              <strong>PLACE_BOX</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Odłożenie pudełka na stół docelowy. Czeka na notify_sequence_done().</div>
+            </div>
+            <div class="op-state-box op-st-7" data-op-state="FINISHED">
+              <div class="op-snum">Stan 7 ✓</div>
+              <strong>FINISHED</strong>
+              <div class="muted" style="font-size:.8rem;margin-top:4px;">Sukces. Użyj /robomvp/reset do rozpoczęcia nowego cyklu.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+            <label class="muted" for="op-state-select" style="font-size:.88rem;white-space:nowrap;">Symuluj stan:</label>
+            <select id="op-state-select" class="search" style="margin:0;flex:1;">
+              <option>SEARCH_TABLE</option>
+              <option>DETECT_MARKER</option>
+              <option>ALIGN_WITH_BOX</option>
+              <option>PICK_BOX</option>
+              <option>ROTATE_180</option>
+              <option>NAVIGATE_TO_TARGET_MARKER</option>
+              <option>PLACE_BOX</option>
+              <option>FINISHED</option>
+            </select>
+          </div>
+          <div class="grid-2" style="margin-top:14px;">
+            <div class="notice warn">
+              <strong>⚠ ALIGN_WITH_BOX</strong> – Najczęstszy punkt interwencji. Gdy offset nie maleje lub marker jest tracony, użyj pause i popraw geometrię sceny albo kalibrację kamery. Sprawdź <code>ros2 topic echo /robomvp/offset</code>.
+            </div>
+            <div class="notice info">
+              <strong>ℹ NAVIGATE_TO_TARGET_MARKER</strong> – Obserwuj odległość do znacznika. Odometria dead-reckoning jest orientacyjna. Przy chwilowej utracie markera robot kontynuuje, ale może odchylić się od kursu.
+            </div>
+          </div>
+        </div>
+
+        <!-- ── COMMANDS REFERENCE ── -->
+        <div style="margin-bottom:22px;padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Referencja komend ROS2</div>
+          <h3 style="margin:0 0 14px;">Najczęściej używane polecenia diagnostyczne i operatorskie</h3>
+          <table>
+            <thead>
+              <tr><th>Cel</th><th>Komenda</th><th>Kiedy używać</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lista węzłów</td><td><code>ros2 node list</code></td><td>Weryfikacja kompletności systemu zaraz po starcie launch</td></tr>
+              <tr><td>Stan FSM</td><td><code>ros2 topic echo /robomvp/state</code></td><td>Najważniejszy kanał – bieżący stan automatu</td></tr>
+              <tr><td>Diagnostyki</td><td><code>ros2 topic echo /diagnostics</code></td><td>Wykrywanie STALE, DEGRADED, ERROR w komponentach</td></tr>
+              <tr><td>Offset markera</td><td><code>ros2 topic echo /robomvp/offset</code></td><td>Śledzenie dx/dy/dz podczas ALIGN_WITH_BOX</td></tr>
+              <tr><td>Detekcje markerów</td><td><code>ros2 topic echo /robomvp/marker_detections</code></td><td>Weryfikacja że kamera widzi oczekiwany marker</td></tr>
+              <tr><td>Odometria</td><td><code>ros2 topic echo /odom --field pose.pose.position</code></td><td>Orientacyjna pozycja bazy podczas NAVIGATE</td></tr>
+              <tr><td>Graf systemu</td><td><code>rqt_graph</code></td><td>Szybka kontrola połączeń węzłów i tematów</td></tr>
+              <tr><td>Monitor diagnostyk</td><td><code>rqt_robot_monitor</code></td><td>Graficzny przegląd diagnostyk w czasie rzeczywistym</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── DIAGNOSTICS LOG ── -->
+        <div style="padding:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;">
+          <div class="eyebrow op-eyebrow">Dziennik operatorski i interpretacja statusów</div>
+          <h3 style="margin:0 0 14px;">Rejestr akcji i klucz do statusów diagnostycznych</h3>
+          <div class="grid-2">
+            <div>
+              <div class="op-log" id="op-log">
+                <div class="op-log-line lvl-ok"><span class="ts">09:00:00</span>Panel operatorski załadowany. Sesja gotowa.</div>
+                <div class="op-log-line"><span class="ts">09:00:02</span>Oczekiwanie na wypełnienie checklisty pre-flight.</div>
+              </div>
+            </div>
+            <div>
+              <table>
+                <thead><tr><th>Status systemu</th><th>Interpretacja i działanie operatora</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="badge" style="background:rgba(41,195,122,.12);border-color:rgba(41,195,122,.22);color:#86efac;">READY</span></td>
+                    <td>Komplet węzłów działa, obrazy i stan FSM są świeże, brak STALE. Demo można uruchomić.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge" style="background:rgba(255,184,77,.12);border-color:rgba(255,184,77,.22);color:#fde047;">DEGRADED</span></td>
+                    <td>System pracuje częściowo (np. jedna kamera). Operator decyduje czy demo jest akceptowalne.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge" style="background:rgba(255,184,77,.12);border-color:rgba(255,184,77,.22);color:#fb923c;">STALE</span></td>
+                    <td>Brak świeżych wiadomości przez &gt;3 s. Wymagana diagnoza węzła lub połączenia sieciowego.</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.22);color:#fca5a5;">ERROR</span></td>
+                    <td>Błąd krytyczny. Sprawdź logi węzłów, ping do 192.168.123.161 i stan SDK Unitree.</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="notice danger" style="margin-top:12px;">
+                <strong>⚠ Ważne:</strong> Ten panel jest interaktywnym przewodnikiem. Nie zastępuje fizycznych procedur bezpieczeństwa, lokalnego nadzoru nad robotem ani decyzji opartej na rzeczywistym stanie systemu.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
       <!-- ═══════════════════════════════ KROK 6 ═══════════════════════════════ -->
       <div class="step-divider sd6">
         <div class="step-num-box">6</div>
@@ -1287,6 +1764,102 @@ ros2 run camera_calibration cameracalibrator \
       });
     }, { threshold: 0.35 });
     sections.forEach(section => observer.observe(section));
+
+    // ── TRYB OPERATORA – interaktywność panelu operatorskiego ──
+
+    // Operator action buttons → populate command display + log
+    const opActionBtns  = document.querySelectorAll('[data-op-cmd]');
+    const opSelectedCmd = document.getElementById('op-selected-cmd');
+    const opLog         = document.getElementById('op-log');
+
+    function opLogLine(msg, level) {
+      if (!opLog) return;
+      const now  = new Date();
+      const ts   = now.toLocaleTimeString('pl-PL');
+      const line = document.createElement('div');
+      line.className = 'op-log-line' + (level ? ' lvl-' + level : '');
+      line.innerHTML = `<span class="ts">${ts}</span>${msg}`;
+      opLog.prepend(line);
+    }
+
+    opActionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (opSelectedCmd) opSelectedCmd.textContent = btn.dataset.opCmd;
+        const strong = btn.querySelector('strong');
+        const label  = strong ? (strong.dataset.label || strong.textContent).trim() : '';
+        const lvl    = btn.classList.contains('danger') ? 'err'
+                     : btn.classList.contains('warn')   ? 'warn' : 'ok';
+        opLogLine(`Wybrano akcję: <strong>${label}</strong>.`, lvl);
+      });
+    });
+
+    // Pre-flight checklist → readiness check
+    const opPreflightItems  = document.querySelectorAll('.op-preflight-item');
+    const opReadinessBox    = document.getElementById('op-readiness-box');
+    const opCheckBtn        = document.getElementById('op-check-readiness-btn');
+    const OP_PARTIAL_THRESHOLD = 0.75; // require ≥75 % of items checked for partial readiness
+
+    if (opCheckBtn) {
+      opCheckBtn.addEventListener('click', () => {
+        const total   = opPreflightItems.length;
+        const checked = [...opPreflightItems].filter(x => x.checked).length;
+        if (checked === total) {
+          opReadinessBox.className = 'notice info';
+          opReadinessBox.textContent = `Gotowość potwierdzona (${checked}/${total}). Demo można uruchomić przy zachowaniu nadzoru operatora.`;
+          opLogLine(`Checklista kompletna (${checked}/${total}). Sesja oznaczona jako READY.`, 'ok');
+        } else if (checked >= Math.ceil(total * OP_PARTIAL_THRESHOLD)) {
+          opReadinessBox.className = 'notice warn';
+          opReadinessBox.textContent = `Gotowość częściowa: ${checked}/${total}. Uzupełnij brakujące pozycje przed startem.`;
+          opLogLine(`Checklista niepełna: ${checked}/${total}.`, 'warn');
+        } else {
+          opReadinessBox.className = 'notice danger';
+          opReadinessBox.textContent = `Brak gotowości: ${checked}/${total}. Start demo niezalecany.`;
+          opLogLine(`Start odrzucony – niepełna checklista: ${checked}/${total}.`, 'err');
+        }
+      });
+    }
+
+    // FSM state simulator – select box + clickable state boxes
+    const opStateSelect = document.getElementById('op-state-select');
+    const opFsmLabel    = document.getElementById('op-fsm-label');
+    const opStateBoxes  = document.querySelectorAll('.op-state-box');
+    const opStateOrder  = [
+      'SEARCH_TABLE','DETECT_MARKER','ALIGN_WITH_BOX','PICK_BOX',
+      'ROTATE_180','NAVIGATE_TO_TARGET_MARKER','PLACE_BOX','FINISHED'
+    ];
+
+    function opUpdateFsm(active) {
+      const idx = opStateOrder.indexOf(active);
+      opStateBoxes.forEach(box => {
+        const bi = opStateOrder.indexOf(box.dataset.opState);
+        box.classList.remove('op-state-active', 'op-state-done');
+        if (bi < idx)  box.classList.add('op-state-done');
+        if (bi === idx) box.classList.add('op-state-active');
+      });
+      if (opFsmLabel) {
+        opFsmLabel.textContent = active;
+        const p = opFsmLabel.parentElement;
+        p.classList.remove('op-kpi-ok', 'op-kpi-warn', 'op-kpi-err');
+        if (active === 'FINISHED')                                                          p.classList.add('op-kpi-ok');
+        else if (active === 'ALIGN_WITH_BOX' || active === 'NAVIGATE_TO_TARGET_MARKER')     p.classList.add('op-kpi-warn');
+      }
+    }
+
+    if (opStateSelect) {
+      opStateSelect.addEventListener('change', () => {
+        opUpdateFsm(opStateSelect.value);
+        opLogLine(`Symulowany stan FSM: <strong>${opStateSelect.value}</strong>.`);
+      });
+    }
+
+    opStateBoxes.forEach(box => {
+      box.addEventListener('click', () => {
+        const state = box.dataset.opState;
+        if (opStateSelect) opStateSelect.value = state;
+        opUpdateFsm(state);
+        opLogLine(`Symulowany stan FSM: <strong>${state}</strong>.`);
+      });
+    });
   </script>
 </body>
 </html>
