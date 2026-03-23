@@ -1464,35 +1464,35 @@ ros2 topic echo /odom --field pose.pose.position</div>
           <h3 style="margin:0 0 14px;">Gotowe komendy – kliknij, aby wybrać do kopiowania</h3>
           <div class="button-grid">
             <button class="op-btn safe" data-op-cmd="ros2 launch robomvp demo.launch.py network_interface:=eth0 require_robot_connection:=true">
-              <strong>▶ Start systemu</strong>
+              <strong data-label="Start systemu">▶ Start systemu</strong>
               <span class="op-action-hint">Uruchamia pełny launch z połączeniem do robota. Użyj po spełnieniu checklisty.</span>
             </button>
             <button class="op-btn warn" data-op-cmd='ros2 service call /robomvp/pause std_srvs/SetBool "{data: true}"'>
-              <strong>⏸ Pause FSM</strong>
+              <strong data-label="Pause FSM">⏸ Pause FSM</strong>
               <span class="op-action-hint">Wstrzymuje automat stanowy. Bezpieczna metoda przy korekcie sceny bez ryzyka ruchowego.</span>
             </button>
             <button class="op-btn safe" data-op-cmd='ros2 service call /robomvp/pause std_srvs/SetBool "{data: false}"'>
-              <strong>▶ Resume FSM</strong>
+              <strong data-label="Resume FSM">▶ Resume FSM</strong>
               <span class="op-action-hint">Wznawia scenariusz po pauzie. Upewnij się że korekta sceny jest zakończona.</span>
             </button>
             <button class="op-btn danger" data-op-cmd='ros2 service call /robomvp/emergency_stop std_srvs/Trigger "{}"'>
-              <strong>⛔ Emergency stop</strong>
+              <strong data-label="Emergency stop">⛔ Emergency stop</strong>
               <span class="op-action-hint">Zatrzymuje robota i rozłącza SDK. Stosuj tylko przy realnym zagrożeniu.</span>
             </button>
             <button class="op-btn warn" data-op-cmd='ros2 service call /robomvp/reset std_srvs/Trigger "{}"'>
-              <strong>↺ Reset FSM</strong>
+              <strong data-label="Reset FSM">↺ Reset FSM</strong>
               <span class="op-action-hint">Przywraca stan SEARCH_TABLE. Użyj po timeoucie lub po ustabilizowaniu sytuacji po e-stop.</span>
             </button>
             <button class="op-btn safe" data-op-cmd='ros2 action send_goal --feedback /robomvp/manipulation_task robomvp/action/ManipulationTask "{sequence_name: '"'"'pick_box'"'"', apply_offset: true}"'>
-              <strong>✋ Test PICK_BOX</strong>
+              <strong data-label="Test PICK_BOX">✋ Test PICK_BOX</strong>
               <span class="op-action-hint">Ręczne wywołanie sekwencji chwytu przez Action Server. Tylko do testowania izolowanego.</span>
             </button>
             <button class="op-btn safe" data-op-cmd="ros2 run teleop_twist_keyboard teleop_twist_keyboard">
-              <strong>🕹 Teleop</strong>
+              <strong data-label="Teleop">🕹 Teleop</strong>
               <span class="op-action-hint">Ręczne sterowanie prędkością przez /cmd_vel. Wymaga teleop_enabled:=true w launch.</span>
             </button>
             <button class="op-btn warn" data-op-cmd="ros2 topic echo /diagnostics">
-              <strong>🔍 Diagnostyki</strong>
+              <strong data-label="Diagnostyki">🔍 Diagnostyki</strong>
               <span class="op-action-hint">Podgląd bieżącego health-checku. Szukaj statusów STALE lub ERROR w komponentach.</span>
             </button>
           </div>
@@ -1785,17 +1785,19 @@ ros2 run camera_calibration cameracalibrator \
     opActionBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         if (opSelectedCmd) opSelectedCmd.textContent = btn.dataset.opCmd;
-        const label = btn.querySelector('strong').textContent.replace(/[▶⏸↺⛔✋🕹🔍✔]/gu, '').trim();
-        const lvl   = btn.classList.contains('danger') ? 'err'
-                    : btn.classList.contains('warn')   ? 'warn' : 'ok';
+        const strong = btn.querySelector('strong');
+        const label  = strong ? (strong.dataset.label || strong.textContent).trim() : '';
+        const lvl    = btn.classList.contains('danger') ? 'err'
+                     : btn.classList.contains('warn')   ? 'warn' : 'ok';
         opLogLine(`Wybrano akcję: <strong>${label}</strong>.`, lvl);
       });
     });
 
     // Pre-flight checklist → readiness check
-    const opPreflightItems = document.querySelectorAll('.op-preflight-item');
-    const opReadinessBox   = document.getElementById('op-readiness-box');
-    const opCheckBtn       = document.getElementById('op-check-readiness-btn');
+    const opPreflightItems  = document.querySelectorAll('.op-preflight-item');
+    const opReadinessBox    = document.getElementById('op-readiness-box');
+    const opCheckBtn        = document.getElementById('op-check-readiness-btn');
+    const OP_PARTIAL_THRESHOLD = 0.75; // require ≥75 % of items checked for partial readiness
 
     if (opCheckBtn) {
       opCheckBtn.addEventListener('click', () => {
@@ -1805,7 +1807,7 @@ ros2 run camera_calibration cameracalibrator \
           opReadinessBox.className = 'notice info';
           opReadinessBox.textContent = `Gotowość potwierdzona (${checked}/${total}). Demo można uruchomić przy zachowaniu nadzoru operatora.`;
           opLogLine(`Checklista kompletna (${checked}/${total}). Sesja oznaczona jako READY.`, 'ok');
-        } else if (checked >= Math.ceil(total * 0.75)) {
+        } else if (checked >= Math.ceil(total * OP_PARTIAL_THRESHOLD)) {
           opReadinessBox.className = 'notice warn';
           opReadinessBox.textContent = `Gotowość częściowa: ${checked}/${total}. Uzupełnij brakujące pozycje przed startem.`;
           opLogLine(`Checklista niepełna: ${checked}/${total}.`, 'warn');
@@ -1838,9 +1840,8 @@ ros2 run camera_calibration cameracalibrator \
         opFsmLabel.textContent = active;
         const p = opFsmLabel.parentElement;
         p.classList.remove('op-kpi-ok', 'op-kpi-warn', 'op-kpi-err');
-        if (active === 'FINISHED')                                        p.classList.add('op-kpi-ok');
-        else if (active === 'ALIGN_WITH_BOX' || active === 'NAVIGATE_TO_TARGET_MARKER') p.classList.add('op-kpi-warn');
-        else                                                               p.classList.add('');
+        if (active === 'FINISHED')                                                          p.classList.add('op-kpi-ok');
+        else if (active === 'ALIGN_WITH_BOX' || active === 'NAVIGATE_TO_TARGET_MARKER')     p.classList.add('op-kpi-warn');
       }
     }
 
